@@ -120,7 +120,7 @@ release-lint 0.3.2 · release-lint-demo.aab · Android · com.example.releaselin
 | `debug/simulator-build` | error | An iOS Simulator build: the App Store only accepts device builds |
 | `debug/cleartext-traffic`, `debug/arbitrary-loads` | warning | Plain HTTP allowed everywhere (Android manifest or `<base-config>`) or App Transport Security turned off (iOS) |
 | `debug/cleartext-exception` | warning | Plain HTTP allowed for one host: an Android network security config `<domain-config>`, or iOS `NSExceptionDomains`. Names dev hosts such as `10.0.2.2` or staging |
-| `debug/user-ca-trusted` | warning | The network security config trusts user-installed CA certificates outside `<debug-overrides>`, so anyone who installs one can read the app's HTTPS traffic |
+| `debug/user-ca-trusted` | warning | The network security config trusts user-installed CA certificates outside `<debug-overrides>`, so anyone who installs one can read the app's HTTPS traffic. Inside `<debug-overrides>` too when the build is debuggable, since that turns them on |
 | `sourcemap/file`, `sourcemap/url` | warning | Source maps shipped inside the app, or a `sourceMappingURL` in the bundle |
 | `scan/unreadable` | error | Part of the app could not be read, so it was not checked: the scan fails closed instead of passing silently |
 | `deeplink/unresolved-host`, `scan/hermes-approximate`, `scan/signing-not-checked` | info | Notes on what could not be fully checked: a deep link host behind a resource reference, an unknown Hermes version, or signing in an Xcode `.app` / `.xcarchive` before export |

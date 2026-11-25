@@ -133,7 +133,7 @@ async function readNetworkExceptions(zip: ZipArchive, layout: Layout, problems: 
 const trustsUserCas = (el: XmlElement) =>
   el.children.some((anchors) => anchors.name === 'trust-anchors' && anchors.children.some((c) => c.name === 'certificates' && c.attributes['src'] === 'user'));
 
-/** Plain HTTP and user CAs that apply to release builds. `<debug-overrides>` is skipped: it only applies to debuggable builds. */
+/** Plain HTTP and user CAs. `<debug-overrides>` is marked: Android applies it only when the build is debuggable. */
 function networkConfigExceptions(root: XmlElement, file: string): NetworkException[] {
   const domainConfig = (el: XmlElement, inheritedCleartext: boolean): NetworkException[] => {
     const value = el.attributes['cleartextTrafficPermitted'];
@@ -147,6 +147,9 @@ function networkConfigExceptions(root: XmlElement, file: string): NetworkExcepti
   };
   return root.children.flatMap((el): NetworkException[] => {
     if (el.name === 'domain-config') return domainConfig(el, false);
+    if (el.name === 'debug-overrides') {
+      return trustsUserCas(el) ? [{ kind: 'user-ca', host: '*', evidence: '<debug-overrides> trusts <certificates src="user">', file, debugOverrides: true }] : [];
+    }
     if (el.name !== 'base-config') return [];
     return [
       ...(el.attributes['cleartextTrafficPermitted'] === 'true' ? [{ kind: 'cleartext', host: '*', evidence: '<base-config cleartextTrafficPermitted="true">', file } satisfies NetworkException] : []),

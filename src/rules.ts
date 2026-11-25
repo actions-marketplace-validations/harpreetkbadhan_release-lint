@@ -201,8 +201,13 @@ const USER_CA_FIX = 'Move <certificates src="user"/> into <debug-overrides>, whi
 const BASE_CLEARTEXT_FIX = 'Remove cleartextTrafficPermitted from <base-config>, or allow plain HTTP only for the hosts that need it with a <domain-config>.';
 
 function networkRules(app: AppModel, { allowHosts }: RuleOptions): Finding[] {
-  return (app.networkExceptions ?? []).flatMap(({ kind, host, evidence, file }): Finding[] => {
+  return (app.networkExceptions ?? []).flatMap(({ kind, host, evidence, file, debugOverrides }): Finding[] => {
     const at = { evidence, location: file };
+    // <debug-overrides> is harmless in a release build, but a debuggable build (debug/debuggable) turns it on.
+    if (debugOverrides && !app.flags.debuggable) return [];
+    if (kind === 'user-ca' && debugOverrides) {
+      return [{ ruleId: 'debug/user-ca-trusted', severity: 'warning', message: "Trusts user-installed CA certificates, because this build is debuggable and <debug-overrides> applies to it: anyone who adds one to their phone can read the app's HTTPS traffic", ...at, fix: 'Build the release variant without android:debuggable; <debug-overrides> then no longer applies.' }];
+    }
     if (kind === 'user-ca') {
       return [{ ruleId: 'debug/user-ca-trusted', severity: 'warning', message: "Trusts user-installed CA certificates: anyone who adds one to their phone can read the app's HTTPS traffic", ...at, fix: USER_CA_FIX }];
     }

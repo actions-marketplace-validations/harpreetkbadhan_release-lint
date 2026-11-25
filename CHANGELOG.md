@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.3
+
+- `debug/user-ca-trusted` now also reports user CAs inside `<debug-overrides>` when the build is debuggable, because
+  Android turns `<debug-overrides>` on for any build with `android:debuggable="true"`, such as a release build type
+  that got it set by mistake. The finding says so, next to the `debug/debuggable` error. Release builds stay silent.
+  Suggested by u/dawedev on Reddit, thanks. Checked on aapt2-compiled .apk and .aab files.
+
 ## 0.3.2
 
 - New rule `updates/non-production-channel` (#5, suggested on Reddit): an Expo app built to get over-the-air updates

@@ -44,6 +44,8 @@ export interface NetworkException {
   evidence: string;
   /** Archive entry it was read from. */
   file: string;
+  /** From `<debug-overrides>`: Android applies it only when the build is debuggable. */
+  debugOverrides?: true;
 }
 
 export interface DeepLink {

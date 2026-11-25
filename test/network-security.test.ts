@@ -14,6 +14,7 @@ const expectedExceptions = (file: string): NetworkException[] => [
   { kind: 'user-ca', host: '*', evidence: '<base-config> trusts <certificates src="user">', file },
   { kind: 'cleartext', host: '10.0.2.2', evidence: '<domain-config cleartextTrafficPermitted="true"> 10.0.2.2', file },
   { kind: 'cleartext', host: 'api.staging.example.com', evidence: '<domain-config cleartextTrafficPermitted="true"> api.staging.example.com', file },
+  { kind: 'user-ca', host: '*', evidence: '<debug-overrides> trusts <certificates src="user">', file, debugOverrides: true },
 ];
 
 describe('XML text nodes', () => {
@@ -31,7 +32,7 @@ describe('XML text nodes', () => {
 });
 
 describe('reading network security settings', () => {
-  it('reads the network security config of an .aab, ignoring debug-overrides', async () => {
+  it('reads the network security config of an .aab, marking what only applies to debuggable builds', async () => {
     const path = await writeTemp('demo.aab', aab({ extra: { [AAB_CONFIG]: protoXml(networkSecurityConfig()) } }));
     expect((await readApp(path)).networkExceptions).toEqual(expectedExceptions(AAB_CONFIG));
   });
@@ -122,6 +123,19 @@ describe('network security rules', () => {
       ['debug/cleartext-exception', 'warning', 'Plain HTTP is allowed for a development host. Points at what looks like a staging or development host'],
     ]);
     expect(findings.every((f) => f.location === AAB_CONFIG && f.fix.length > 0)).toBe(true);
+  });
+
+  it('reports debug-overrides only when the build is debuggable, which turns them on', () => {
+    const exceptions = expectedExceptions(AAB_CONFIG).filter((e) => e.debugOverrides);
+    expect(runRules(app('android', exceptions), { allowHosts: [] })).toEqual([]);
+    const debuggable = { ...app('android', exceptions), flags: { debuggable: true } };
+    const findings = runRules(debuggable, { allowHosts: [] });
+    expect(findings.map((f) => [f.ruleId, f.severity])).toEqual([
+      ['debug/debuggable', 'error'],
+      ['debug/user-ca-trusted', 'warning'],
+    ]);
+    expect(findings[1]?.message).toContain('this build is debuggable');
+    expect(findings[1]?.evidence).toBe('<debug-overrides> trusts <certificates src="user">');
   });
 
   it('reports a production host neutrally, skips allowHosts, and maps a whole-app exception to debug/cleartext-traffic', () => {
