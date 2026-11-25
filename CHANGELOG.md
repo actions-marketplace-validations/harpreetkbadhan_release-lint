@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0
+
+- **`.apk` support.** Reads the binary XML `AndroidManifest.xml` (UTF-16 and UTF-8 string pools; attribute names
+  recovered from the resource map when an obfuscator stripped them). Tested on real release and debug APKs.
+- **SARIF output:** `--sarif <path>` writes a SARIF 2.1.0 report for GitHub code scanning, with stable fingerprints.
+  The GitHub Action has a matching `sarif` input.
+- Secret patterns live in their own file with a one-line-per-rule test table, so adding a rule is a two-file change.
+
 ## 0.1.1
 
 - In GitHub Actions, findings now appear as annotations on the run page and as a table in the job summary.
