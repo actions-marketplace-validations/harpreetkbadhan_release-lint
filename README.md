@@ -29,6 +29,7 @@
   <a href="#try-it-in-30-seconds">Try it in 30 seconds</a> ·
   <a href="#in-ci">GitHub Action</a> ·
   <a href="#what-it-checks">Rules</a> ·
+  <a href="#with-ai-coding-agents">AI agents</a> ·
   <a href="https://github.com/harpreetkbadhan/release-lint-demo">Demo app</a>
 </p>
 
@@ -40,7 +41,20 @@ npx app-release-lint app-release.ipa     # or app-release.aab
 
 Or install it (`npm i -D app-release-lint`) and run `release-lint`. Node 20.19 or newer.
 
+**Built your app with Cursor, Claude Code or Codex?** Run it before you upload. When code is written fast, a secret key or
+a staging URL slips into the build easily, and the built file is where you can see it.
+
 ![release-lint finding a leaked Stripe key, a staging App Link and localhost URLs in a release build of an Expo app](docs/demo.gif)
+
+## Start here
+
+| You have | Do this |
+|---|---|
+| A built `.ipa` or `.aab` | `npx app-release-lint path/to/app.aab` |
+| No app at hand | [Scan the demo build](#try-it-in-30-seconds) (30 seconds) |
+| A CI pipeline | [Add the GitHub Action](#in-ci) (one line) |
+| EAS Build | [Add the build hook](#in-ci) |
+| An AI coding agent | [Give it the release-lint skill](#with-ai-coding-agents) |
 
 ### Try it in 30 seconds
 
@@ -174,8 +188,21 @@ In CI, anyone who can open a pull request can edit this file, so review changes 
 
 ### With AI coding agents
 
-[`skills/release-lint/SKILL.md`](skills/release-lint/SKILL.md) teaches Claude Code, Codex and similar agents to run
-release-lint on your build and fix the findings at their source.
+[`skills/release-lint/SKILL.md`](skills/release-lint/SKILL.md) teaches your agent to find the release build, run
+release-lint, and fix each finding at its source (the EAS profile, `app.config.ts`, the env var), not in the binary.
+
+**Claude Code**, for all your projects:
+
+```sh
+mkdir -p ~/.claude/skills/release-lint && curl -fsSL -o ~/.claude/skills/release-lint/SKILL.md \
+  https://raw.githubusercontent.com/harpreetkbadhan/release-lint/main/skills/release-lint/SKILL.md
+```
+
+Then ask: *"check my release build before I upload it"*. For one project only, put the file in
+`.claude/skills/release-lint/` inside that project instead.
+
+**Codex, Cursor and others:** copy the contents of `SKILL.md` into the instructions file your tool reads (for example
+`AGENTS.md` or a Cursor rule).
 
 ## How it works
 
@@ -200,6 +227,10 @@ narrower job: a few seconds, no setup, in any CI step, and a short list of relea
 - Android hosts written as resource references (`@string/…`) are reported but not resolved yet.
 - Native code (`classes.dex`, the iOS executable's strings) is not scanned for secrets: SDKs make that too noisy.
 - Permissions checks, SARIF output and online validation of `apple-app-site-association` / `assetlinks.json` are planned.
+
+---
+
+If release-lint caught something before your users did, a ⭐ helps other mobile developers find it.
 
 ## License
 
