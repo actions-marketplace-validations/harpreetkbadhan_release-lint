@@ -2,7 +2,7 @@
 
 ## 0.2.3
 
-- README: **Let your agent do it**, a copy-paste prompt for Claude Code, Codex, Cursor or Copilot. The agent finds
+- README: **Paste one prompt into your agent**, a copy-paste prompt for Claude Code, Codex, Cursor or Copilot. The agent finds
   the release build, runs release-lint, explains each finding and fixes it at its source (app config, EAS profile, env
   vars).
 - **Claude Code plugin.** `/plugin marketplace add harpreetkbadhan/release-lint`, then

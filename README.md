@@ -29,7 +29,7 @@
   <a href="#try-it-in-30-seconds">Try it in 30 seconds</a> ·
   <a href="#in-ci">GitHub Action</a> ·
   <a href="#what-it-checks">Rules</a> ·
-  <a href="#let-your-agent-do-it">AI agents</a> ·
+  <a href="#paste-one-prompt-into-your-agent">AI agents</a> ·
   <a href="https://github.com/harpreetkbadhan/release-lint-demo">Demo app</a>
 </p>
 
@@ -56,7 +56,7 @@ a staging URL slips into the build easily, and the built file is where you can s
 | No app at hand | [Scan the demo build](#try-it-in-30-seconds) (30 seconds) |
 | A CI pipeline | [Add the GitHub Action](#in-ci) (one line) |
 | EAS Build | [Add the build hook](#in-ci) |
-| An AI coding agent | [Paste one prompt](#let-your-agent-do-it), or [install the Claude Code plugin](#with-ai-coding-agents) for `/app-release-lint` |
+| An AI coding agent | [Paste one prompt](#paste-one-prompt-into-your-agent), or [install the Claude Code plugin](#with-ai-coding-agents) for `/app-release-lint` |
 
 ### Try it in 30 seconds
 
@@ -209,7 +209,7 @@ silently turn a check off.
 In CI, anyone who can open a pull request can edit this file, so review changes to it like code (for example with
 `CODEOWNERS`).
 
-### Let your agent do it
+### Paste one prompt into your agent
 
 Paste this into Claude Code, Codex, Cursor or Copilot (agent mode) in your app's project. It needs nothing installed.
 
