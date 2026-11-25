@@ -20,10 +20,32 @@ Node 20.19 or newer. No runtime dependencies: please keep it that way.
 
 ## Adding a secret rule
 
-1. Add an entry to `SECRET_PATTERNS` in `src/rules.ts`. Anchor the start with `(?<![\w-])`, bound every repeat
-   (`{20,256}`, never `+` or `*`), and prefer a provider-specific prefix over "looks random".
-2. In `test/rules.test.ts`, add a test that finds it **and** a test for a similar string that must not match. Build the
-   fake key from pieces at runtime (`'sk_' + 'live_' + '…'`) so no file contains a complete key.
+Two files, both edits at the **end** of a list, so it works fine in GitHub's web editor:
+
+1. **`src/secret-patterns.ts`**: add an entry just above the `// ↑ Add new patterns here` line, copying the shape of
+   the entry before it:
+
+   ```ts
+   {
+     id: 'secret/example-token',
+     severity: 'error',
+     pattern: /(?<![\w-])exm_[A-Za-z0-9]{32}(?![\w-])/g,
+     message: 'Example API token',
+     fix: MOVE_TO_SERVER,
+   },
+   ```
+
+   Anchor the start with `(?<![\w-])`, bound every repeat (`{20,256}`, never `+` or `*`), and use a provider-specific
+   prefix, never "looks random".
+2. **`test/secret-patterns.test.ts`**: add one line at the end of `CASES`: a string the rule must report and a similar
+   one it must not. Build fake keys from pieces (`'exm' + '_' + 'a'.repeat(32)`) so no file contains a complete key:
+
+   ```ts
+   { rule: 'secret/example-token', finds: 'exm' + '_' + 'a'.repeat(32), ignores: 'exm' + '_' + 'short' },
+   ```
+
+A test fails if a pattern has no line in `CASES`, so you can't forget step 2. Then add the key to the `secret/*` row of
+the README table.
 
 ## Test files
 
