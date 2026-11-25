@@ -1,6 +1,6 @@
 ---
 name: app-release-lint
-description: Check a built iOS or Android app (.ipa, .aab or .apk) for release mistakes before it ships - leaked secrets in the JS bundle or Expo config, staging or localhost servers, staging deep-link domains in the signed entitlements or manifest, debuggable or development-signed builds, and shipped source maps. Use when the user asks to check, lint or verify a release build, before an App Store or Google Play upload, or after an EAS / Gradle / Xcode release build.
+description: Check a built iOS or Android app (.ipa, .aab, .apk, or an Xcode .app / .xcarchive) for release mistakes before it ships - leaked secrets in the JS bundle or Expo config, staging or localhost servers, staging deep-link domains in the signed entitlements or manifest, a store build on a non-production EAS Update channel, plain-HTTP or user-CA network settings, debuggable, development-signed or Simulator builds, and shipped source maps. Use when the user asks to check, lint or verify a release build, before an App Store or Google Play upload, or after an EAS / Gradle / Xcode release build.
 ---
 
 # release-lint

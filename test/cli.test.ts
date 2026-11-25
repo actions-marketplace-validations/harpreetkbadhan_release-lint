@@ -307,7 +307,7 @@ describe('release-lint CLI', () => {
   });
 
   it('prints help and version', async () => {
-    expect(await run(['--help'])).toMatchObject({ code: 0, stdout: expect.stringContaining('Usage: release-lint <app.ipa|app.aab|app.apk>') });
+    expect(await run(['--help'])).toMatchObject({ code: 0, stdout: expect.stringContaining('Usage: release-lint [app.ipa | app.aab | app.apk | App.xcarchive] [options]') });
     expect(await run(['--version'])).toMatchObject({ code: 0, stdout: `${VERSION}\n` });
   });
 });

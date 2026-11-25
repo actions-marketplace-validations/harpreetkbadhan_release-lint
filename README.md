@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>Catch release mistakes in your built <code>.ipa</code> / <code>.aab</code> / <code>.apk</code> before you ship.</b><br>
-  Leaked keys, staging and localhost URLs, staging deep links, debug builds and source maps.
+  Leaked keys, staging and localhost URLs, staging deep links, the wrong update channel, plain HTTP, debug builds and source maps.
 </p>
 
 <p align="center">
@@ -34,12 +34,13 @@
 </p>
 
 ```sh
-npx app-release-lint app-release.aab
+npx app-release-lint
 ```
 
-The same command works for `.ipa` and `.apk` files, and for an iOS `.app` or `.xcarchive` straight from Xcode.
+Run it in your app's project and it finds the release build. Or name the file: `npx app-release-lint app-release.aab`.
+It reads `.ipa`, `.aab` and `.apk` files, and an iOS `.app` or `.xcarchive` straight from Xcode.
 
-🔑 secret keys · 🌐 staging / localhost / LAN URLs · 🔗 staging deep links · 🐞 debug builds · 🗺️ source maps
+🔑 secret keys · 🌐 staging / localhost / LAN URLs · 🔗 staging deep links · 📡 update channel · 🔓 plain HTTP · 🐞 debug builds · 🗺️ source maps
 
 Or install it (`npm i -D app-release-lint`) and run `release-lint`. Node 20.19 or newer.
 
@@ -70,15 +71,15 @@ npx app-release-lint release-lint-demo.aab
 
 Code review and source scanners look at your repository. But what ships is the file your build produced, and that file
 often differs from what the repository suggests: `app.config.ts` switches on `APP_VARIANT` or env vars, Expo generates the
-native projects at build time, and config plugins edit entitlements you never see. release-lint opens the final `.ipa`
-or `.aab` and checks what is really inside.
+native projects at build time, and config plugins edit entitlements you never see. release-lint opens the final `.ipa`,
+`.aab` or `.apk` and checks what is really inside.
 
 > **Only scan apps you own or have permission to audit.**
 
 Real output for the release build of [release-lint-demo](https://github.com/harpreetkbadhan/release-lint-demo), a blank `create-expo-app` (Expo SDK 58, React Native 0.88) with planted mistakes:
 
 ```
-release-lint 0.2.4 · release-lint-demo.aab · Android · com.example.releaselintdemo 1.0.0 (1) · Hermes v99
+release-lint 0.3.2 · release-lint-demo.aab · Android · com.example.releaselintdemo 1.0.0 (1) · Hermes v99
 
  ERROR  secret/stripe-secret-key  Stripe live secret key
         sk_live_••••p7dc  (base/assets/index.android.bundle)
@@ -111,17 +112,18 @@ release-lint 0.2.4 · release-lint-demo.aab · Android · com.example.releaselin
 | `secret/*` | error | Stripe secret keys, AWS keys, private keys, OpenAI and Anthropic keys, GitHub and Slack tokens, Slack webhooks, SendGrid keys, Supabase `service_role` keys, Google OAuth client secrets, Mapbox secret tokens, in the JS bundle and the Expo config (`extra`) |
 | `secret/stripe-test-secret-key` | warning | A Stripe test secret key |
 | `secret/google-api-key` | info | Google / Firebase API keys: public by design, but should be restricted |
-| `deeplink/non-production-host` | error | Staging, dev, localhost or private hosts in the **signed** iOS associated domains or Android intent filters |
 | `host/*` | warning (error in Expo config) | `localhost`, `10.0.2.2`, private network addresses, ngrok and other tunnels, `.local` / `.test` domains, and staging / dev hosts |
+| `deeplink/non-production-host` | error | Staging, dev, localhost or private hosts in the **signed** iOS associated domains or Android intent filters |
+| `updates/non-production-channel` | error | An Expo app built to get over-the-air updates (EAS Update) from a `preview`, `staging`, `development`, `beta`, … channel: tester updates would reach your users |
 | `debug/debuggable` | error | Android `android:debuggable`, or a development-signed iOS build (`get-task-allow`) |
 | `debug/dev-bundle` | error | A development JavaScript bundle (`__DEV__` is true) |
-| `updates/non-production-channel` | error | An Expo app built to get over-the-air updates (EAS Update) from a `preview`, `staging`, `development`, `beta`, … channel: tester updates would reach your users |
 | `debug/simulator-build` | error | An iOS Simulator build: the App Store only accepts device builds |
 | `debug/cleartext-traffic`, `debug/arbitrary-loads` | warning | Plain HTTP allowed everywhere (Android manifest or `<base-config>`) or App Transport Security turned off (iOS) |
 | `debug/cleartext-exception` | warning | Plain HTTP allowed for one host: an Android network security config `<domain-config>`, or iOS `NSExceptionDomains`. Names dev hosts such as `10.0.2.2` or staging |
 | `debug/user-ca-trusted` | warning | The network security config trusts user-installed CA certificates outside `<debug-overrides>`, so anyone who installs one can read the app's HTTPS traffic |
 | `sourcemap/file`, `sourcemap/url` | warning | Source maps shipped inside the app, or a `sourceMappingURL` in the bundle |
 | `scan/unreadable` | error | Part of the app could not be read, so it was not checked: the scan fails closed instead of passing silently |
+| `deeplink/unresolved-host`, `scan/hermes-approximate`, `scan/signing-not-checked` | info | Notes on what could not be fully checked: a deep link host behind a resource reference, an unknown Hermes version, or signing in an Xcode `.app` / `.xcarchive` before export |
 
 Secrets are masked in every output, and URLs are shown without credentials or query strings, so the report is safe to
 keep in CI logs. Keys that are public by design (Stripe
@@ -131,7 +133,7 @@ receipt validation, PayPal, Plaid, …) are not reported either.
 ## Usage
 
 ```
-release-lint <app.ipa|app.aab|app.apk> [options]
+release-lint [app.ipa | app.aab | app.apk | App.xcarchive] [options]
 
   --json               Print the report as JSON
   --sarif <path>       Also write a SARIF 2.1.0 report (GitHub code scanning)
@@ -295,10 +297,13 @@ For one project only, put the file in `.claude/skills/release-lint/` inside that
 release-lint reads the app file in place. It never extracts it to disk, never sends anything over the network, and has
 no runtime dependencies. It parses:
 
-- the zip container (including zip64), reading only the handful of entries it needs;
-- `Info.plist` (binary and XML) and the **entitlements inside the code signature** of the iOS executable, which are the
-  values the app was actually signed with (`embedded.mobileprovision` only lists what the profile allows);
-- the protobuf `AndroidManifest.xml` of an `.aab`, and the binary XML one of an `.apk`;
+- the zip container (including zip64), reading only the entries it needs, or an Xcode `.app` / `.xcarchive` folder
+  (symlinks are never followed);
+- `Info.plist` and `Expo.plist` (binary and XML) and the **entitlements inside the code signature** of the iOS
+  executable, which are the values the app was actually signed with (`embedded.mobileprovision` only lists what the
+  profile allows);
+- the protobuf `AndroidManifest.xml` of an `.aab` and the binary XML one of an `.apk`, and the network security config,
+  found by its content because release APKs shorten resource paths;
 - the string table of a Hermes bytecode bundle, or a plain JavaScript bundle, and the embedded Expo config.
 
 ## Why not MobSF, gitleaks or trufflehog?

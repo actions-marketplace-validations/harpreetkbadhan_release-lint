@@ -17,15 +17,15 @@ const FAIL_LEVELS: readonly string[] = [...SEVERITIES, 'none'];
 const CONFIG_KEYS = ['failOn', 'allowHosts', 'ignore'];
 const VERSION = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
 
-const USAGE = `Usage: release-lint <app.ipa|app.aab|app.apk> [options]
+const USAGE = `Usage: release-lint [app.ipa | app.aab | app.apk | App.xcarchive] [options]
 
 Checks a built iOS or Android app for release mistakes: leaked secrets, staging and
-localhost servers, source maps, debug flags and staging deep links.
+localhost servers, staging deep links, the EAS Update channel, plain-HTTP network
+settings, debug builds and source maps.
 Only scan apps you own or have permission to audit.
 
 Without a file, it looks for a release build in the project folder, build/, ios/build/
 and android/app/build/outputs/ (release variants only).
-
 On iOS it also reads an Xcode .app or .xcarchive folder, before export.
 
 Options:
