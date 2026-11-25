@@ -3,8 +3,10 @@
 Lint a **built** iOS or Android app for release mistakes, right before you ship it.
 
 ```sh
-npx release-lint app-release.ipa     # or app-release.aab
+npx app-release-lint app-release.ipa     # or app-release.aab
 ```
+
+Or install it (`npm i -D app-release-lint`) and run `release-lint`. Node 20.19 or newer.
 
 Code review and source scanners look at your repository. But what ships is the file your build produced, and that file
 often differs from what the repository suggests: `app.config.ts` switches on `APP_VARIANT` or env vars, Expo generates the
@@ -80,10 +82,10 @@ Exit codes: `0` nothing at or above `--fail-on`, `1` findings at or above `--fai
 ```yaml
 # GitHub Actions, after the step that builds the release file
 - name: Lint the release build
-  run: npx release-lint@0 build/app-release.aab
+  run: npx app-release-lint@0 build/app-release.aab
 ```
 
-With EAS: `eas build --local --platform ios --profile production --output app.ipa && npx release-lint app.ipa`.
+With EAS: `eas build --local --platform ios --profile production --output app.ipa && npx app-release-lint app.ipa`.
 
 ### Config file
 

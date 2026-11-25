@@ -1,5 +1,5 @@
 {
-  "name": "release-lint",
+  "name": "app-release-lint",
   "version": "0.1.0",
   "description": "Lint a built iOS or Android app (.ipa, .aab) for release mistakes: leaked secrets, staging and localhost servers, source maps, debug flags and staging deep links.",
   "keywords": [

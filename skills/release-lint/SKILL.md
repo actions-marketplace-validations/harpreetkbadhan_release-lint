@@ -15,7 +15,7 @@ Only scan apps the user owns or has permission to audit. Never scan third-party 
 2. Run:
 
    ```sh
-   npx release-lint@0 <file> --json
+   npx app-release-lint@0 <file> --json
    ```
 
    Exit code `0` = nothing at or above `--fail-on` (default `error`), `1` = findings, `2` = the file could not be read (the message says why).
