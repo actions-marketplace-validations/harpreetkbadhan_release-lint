@@ -29,6 +29,7 @@ Only scan apps the user owns or has permission to audit. Never scan third-party 
   - `secret/*` (error): the key must move to a server. Tell the user to **revoke / rotate it now**: it has already shipped if this build was distributed. `secret/google-api-key` (info) is fine to ship; suggest restricting it in Google Cloud Console.
   - `debug/debuggable`: build the release variant / use a distribution (App Store or Ad Hoc) signing profile.
   - `sourcemap/*`: keep maps out of the app; upload them to the crash reporter instead.
+  - `debug/cleartext-*`, `debug/user-ca-trusted`: the network settings. Android: the network security config (often written by a config plugin; keep dev hosts and `<certificates src="user"/>` in `android/app/src/debug/` or `<debug-overrides>`). iOS: `NSAppTransportSecurity` in `ios.infoPlist` / Info.plist.
 - Evidence is already masked. Never try to recover or print the full secret.
 - If a finding is intended (for example a known staging CDN that is really production), offer to add it to `release-lint.config.json` (`allowHosts`, or `ignore` with `rule` and optional `match`) instead of changing code.
 - After fixing, the user needs a new build; re-run release-lint on it.

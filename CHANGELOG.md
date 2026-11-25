@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0
+
+- **Network security exceptions** (#6). New rules, from a Reddit thread on the launch post (thanks u/dawedev):
+  - `debug/cleartext-exception`: plain HTTP allowed for one host, from the Android network security config
+    (`<domain-config cleartextTrafficPermitted="true">`, including nested configs) or iOS `NSExceptionDomains`. Dev
+    hosts such as `10.0.2.2`, LAN addresses or staging are named as such.
+  - `debug/user-ca-trusted`: the network security config trusts user-installed CA certificates in `<base-config>` or a
+    `<domain-config>`. Inside `<debug-overrides>` they only apply to debuggable builds, so they are not reported.
+  - `debug/cleartext-traffic` now also fires for `<base-config cleartextTrafficPermitted="true">`.
+- The config is found by its root element, so release APKs with shortened resource paths (`res/8G.xml`) are covered.
+  Tested against files compiled by aapt2 (.apk, path-shortened .apk, .aab), and with no new findings on real Expo and
+  React Native release builds.
+- `NSAllowsLocalNetworking` is not reported: Expo's iOS template turns it on for every app.
+
 ## 0.2.4
 
 - **No file needed.** `npx app-release-lint` with no file finds the release build in the usual output folders (project

@@ -1,7 +1,7 @@
-import { ReleaseLintError, type AppModel, type DeepLink } from '../types.js';
+import { ReleaseLintError, type AppModel, type DeepLink, type NetworkException } from '../types.js';
 import { MAX_BUNDLE_BYTES, MAX_CONFIG_BYTES, readBundle, readExpoConfig, readOptional, sourceMaps } from './common.js';
 import { readEntitlements } from './macho.js';
-import { isPlistDict, parsePlist, type PlistDict } from './plist.js';
+import { isPlistDict, parsePlist, type PlistDict, type PlistValue } from './plist.js';
 import type { ZipArchive } from './zip.js';
 
 const INFO_PLIST = /^Payload\/[^/]+\.app\/Info\.plist$/;
@@ -32,6 +32,7 @@ export async function readIpa(zip: ZipArchive, file: string): Promise<AppModel> 
   const ats = info['NSAppTransportSecurity'];
   const arbitraryLoads = isPlistDict(ats) ? ats['NSAllowsArbitraryLoads'] : undefined;
   const getTaskAllow = entitlements?.['get-task-allow'];
+  const networkExceptions = atsExceptions(ats, infoName);
 
   return {
     platform: 'ios',
@@ -44,11 +45,27 @@ export async function readIpa(zip: ZipArchive, file: string): Promise<AppModel> 
       ...(typeof getTaskAllow === 'boolean' ? { debuggable: getTaskAllow } : {}),
     },
     deepLinks: entitlements ? associatedDomains(entitlements, executable) : [],
+    ...(networkExceptions.length > 0 ? { networkExceptions } : {}),
     ...(bundle ? { bundle } : {}),
     ...(expoConfig ? { expoConfig } : {}),
     sourceMaps: sourceMaps(zip),
     problems,
   };
+}
+
+const INSECURE_HTTP_KEYS = ['NSExceptionAllowsInsecureHTTPLoads', 'NSTemporaryExceptionAllowsInsecureHTTPLoads'];
+
+/**
+ * Hosts that App Transport Security lets the app reach over plain HTTP. NSAllowsLocalNetworking is not reported:
+ * Expo's iOS template turns it on for every app, and it only covers local addresses.
+ */
+function atsExceptions(ats: PlistValue | undefined, file: string): NetworkException[] {
+  const domains = isPlistDict(ats) ? ats['NSExceptionDomains'] : undefined;
+  if (!isPlistDict(domains)) return [];
+  return Object.entries(domains).flatMap(([host, settings]): NetworkException[] => {
+    const key = isPlistDict(settings) ? INSECURE_HTTP_KEYS.find((k) => settings[k] === true) : undefined;
+    return key ? [{ kind: 'cleartext', host, evidence: `NSExceptionDomains → ${host}: ${key} = true`, file }] : [];
+  });
 }
 
 /** `applinks:example.com?mode=developer` → `{ kind: 'applinks', host: 'example.com' }`. */

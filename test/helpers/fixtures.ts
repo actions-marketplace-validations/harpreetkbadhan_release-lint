@@ -271,6 +271,7 @@ export function axml(root: ProtoEl, { utf8 = false, stripNames = false }: { utf8
       if (a.raw !== undefined) others.push(a.raw);
       if (a.android && a.resId !== undefined) resIds.set(a.name, a.resId);
     }
+    if (el.text !== undefined) others.push(el.text);
     el.children?.forEach(walk);
   };
   walk(root);
@@ -322,6 +323,8 @@ export function axml(root: ProtoEl, { utf8 = false, stripNames = false }: { utf8
     });
     const ext = Buffer.concat([u32(NO_INDEX), u32(index(el.name)), u16(20), u16(20), u16(attrs.length), u16(0), u16(0), u16(0)]);
     elements.push(chunk(0x0102, 16, nodeHeader, Buffer.concat([ext, ...attrs])));
+    // Text is a CDATA chunk: the string index, then an untyped Res_value (as aapt2 writes it).
+    if (el.text !== undefined) elements.push(chunk(0x0104, 16, nodeHeader, Buffer.concat([u32(index(el.text)), u16(8), Buffer.from([0, 0]), u32(0)])));
     el.children?.forEach(emit);
     elements.push(chunk(0x0103, 16, nodeHeader, Buffer.concat([u32(NO_INDEX), u32(index(el.name))])));
   };
@@ -376,6 +379,23 @@ export const androidManifest = (application: ProtoAttr[] = [], children: ProtoEl
     { name: 'versionCode', android: true, value: '42' },
   ],
   children: [{ name: 'application', attrs: application, children }],
+});
+
+/**
+ * A network security config like one left over from local development, the same shape `aapt2 dump xmltree` shows
+ * for a real compiled file: user CAs in base-config, plain HTTP for two dev hosts, user CAs again in debug-overrides.
+ */
+export const networkSecurityConfig = (domains: string[] = ['10.0.2.2', 'api.staging.example.com']): ProtoEl => ({
+  name: 'network-security-config',
+  children: [
+    { name: 'base-config', children: [{ name: 'trust-anchors', children: [{ name: 'certificates', attrs: [{ name: 'src', value: 'system' }] }, { name: 'certificates', attrs: [{ name: 'src', value: 'user' }] }] }] },
+    {
+      name: 'domain-config',
+      attrs: [{ name: 'cleartextTrafficPermitted', bool: true }],
+      children: domains.map((d) => ({ name: 'domain', attrs: [{ name: 'includeSubdomains', bool: true }], text: d })),
+    },
+    { name: 'debug-overrides', children: [{ name: 'trust-anchors', children: [{ name: 'certificates', attrs: [{ name: 'src', value: 'user' }] }] }] },
+  ],
 });
 
 /** Builds a synthetic .aab: base/manifest (protobuf), base/assets bundle and Expo config. */

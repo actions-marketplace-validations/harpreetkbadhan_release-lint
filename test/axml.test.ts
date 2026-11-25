@@ -103,6 +103,15 @@ describe('parseAxml', () => {
     const app = (attrs: ProtoAttr[]): ProtoEl => ({ name: 'manifest', children: [{ name: 'application', attrs }] });
     const debuggable = (root: ReturnType<typeof parseAxml>) => root.children[0]?.attributes['android:debuggable'];
 
+    it('rejects text that repeats one cached string until memory runs out', () => {
+      const root: ProtoEl = { name: 'network-security-config', children: [{ name: 'domain', text: 'x'.repeat(1000) }] };
+      const chunks = splitChunks(axml(root));
+      const cdata = chunks.findIndex((c) => c.readUInt16LE(0) === 0x0104);
+      const repeated = [...chunks.slice(0, cdata), ...Array.from({ length: 100 }, () => chunks[cdata] as Buffer), ...chunks.slice(cdata + 1)];
+      expect(() => parseAxml(joinChunks(repeated), { root: 'network-security-config' })).toThrow(ReleaseLintError);
+      expect(parseAxml(axml(root), { root: 'network-security-config' }).children[0]?.text).toHaveLength(1000);
+    });
+
     it('stays fast when a million string entries point at one huge string', () => {
       const units = 1_000_000;
       const count = 200_000;

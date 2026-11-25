@@ -11,7 +11,7 @@ interface Text {
 /** Runs every rule and returns the findings, errors first. */
 export function runRules(app: AppModel, options: RuleOptions): Finding[] {
   const texts = collectTexts(app);
-  const findings = [...secretRules(texts), ...hostRules(texts, options), ...deepLinkRules(app, options), ...releaseRules(app)];
+  const findings = [...secretRules(texts), ...hostRules(texts, options), ...deepLinkRules(app, options), ...networkRules(app, options), ...releaseRules(app)];
   const rank = (s: Severity) => SEVERITIES.indexOf(s);
   return findings.map((f, i) => ({ f, i })).sort((a, b) => rank(b.f.severity) - rank(a.f.severity) || a.i - b.i).map(({ f }) => f);
 }
@@ -188,6 +188,31 @@ function deepLinkRules(app: AppModel, { allowHosts }: RuleOptions): Finding[] {
         fix: 'Release builds must only claim production domains. Check associatedDomains / intentFilters in your app config (often switched by APP_VARIANT or an env var) and the Release entitlements.',
       },
     ];
+  });
+}
+
+// ---------------------------------------------------------------- network security
+
+const CLEARTEXT_FIX = {
+  android: 'Remove this domain from the network security config, or keep it in a debug-only copy (android/app/src/debug/res/xml/). In Expo, check the config plugin that writes the file.',
+  ios: 'Remove this host from NSAppTransportSecurity → NSExceptionDomains for release builds (in Expo: ios.infoPlist in app.config). App Review asks for a reason for every exception.',
+};
+const USER_CA_FIX = 'Move <certificates src="user"/> into <debug-overrides>, which only applies to debuggable builds.';
+const BASE_CLEARTEXT_FIX = 'Remove cleartextTrafficPermitted from <base-config>, or allow plain HTTP only for the hosts that need it with a <domain-config>.';
+
+function networkRules(app: AppModel, { allowHosts }: RuleOptions): Finding[] {
+  return (app.networkExceptions ?? []).flatMap(({ kind, host, evidence, file }): Finding[] => {
+    const at = { evidence, location: file };
+    if (kind === 'user-ca') {
+      return [{ ruleId: 'debug/user-ca-trusted', severity: 'warning', message: "Trusts user-installed CA certificates: anyone who adds one to their phone can read the app's HTTPS traffic", ...at, fix: USER_CA_FIX }];
+    }
+    if (host === '*') {
+      return [{ ruleId: 'debug/cleartext-traffic', severity: 'warning', message: 'Plain HTTP is allowed to every host', ...at, fix: BASE_CLEARTEXT_FIX }];
+    }
+    if (isAllowed(host, allowHosts)) return [];
+    const issue = classifyHost(host);
+    const message = issue ? `Plain HTTP is allowed for a development host. ${issue.message}` : 'Plain HTTP is allowed for this host';
+    return [{ ruleId: 'debug/cleartext-exception', severity: 'warning', message, ...at, fix: CLEARTEXT_FIX[app.platform] }];
   });
 }
 

@@ -31,6 +31,19 @@ export interface XmlElement {
   name: string;
   attributes: Record<string, string>;
   children: XmlElement[];
+  /** Text content, such as the host in `<domain>10.0.2.2</domain>`; absent when the element has none. */
+  text?: string;
+}
+
+/** Plain HTTP or user-installed CAs allowed by the network security settings (Android config, iOS ATS). */
+export interface NetworkException {
+  kind: 'cleartext' | 'user-ca';
+  /** The host, or `*` for the whole app. */
+  host: string;
+  /** What the file says, for the report. */
+  evidence: string;
+  /** Archive entry it was read from. */
+  file: string;
 }
 
 export interface DeepLink {
@@ -67,6 +80,8 @@ export interface AppModel {
     allowsArbitraryLoads?: boolean;
   };
   deepLinks: DeepLink[];
+  /** Present only when the app has any. */
+  networkExceptions?: NetworkException[];
   bundle?: JsBundle;
   expoConfig?: { file: string; value: unknown };
   /** Archive entries ending in `.map`. */

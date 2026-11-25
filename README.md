@@ -115,7 +115,9 @@ release-lint 0.2.4 · release-lint-demo.aab · Android · com.example.releaselin
 | `host/*` | warning (error in Expo config) | `localhost`, `10.0.2.2`, private network addresses, ngrok and other tunnels, `.local` / `.test` domains, and staging / dev hosts |
 | `debug/debuggable` | error | Android `android:debuggable`, or a development-signed iOS build (`get-task-allow`) |
 | `debug/dev-bundle` | error | A development JavaScript bundle (`__DEV__` is true) |
-| `debug/cleartext-traffic`, `debug/arbitrary-loads` | warning | Plain HTTP allowed everywhere (Android) or App Transport Security turned off (iOS) |
+| `debug/cleartext-traffic`, `debug/arbitrary-loads` | warning | Plain HTTP allowed everywhere (Android manifest or `<base-config>`) or App Transport Security turned off (iOS) |
+| `debug/cleartext-exception` | warning | Plain HTTP allowed for one host: an Android network security config `<domain-config>`, or iOS `NSExceptionDomains`. Names dev hosts such as `10.0.2.2` or staging |
+| `debug/user-ca-trusted` | warning | The network security config trusts user-installed CA certificates outside `<debug-overrides>`, so anyone who installs one can read the app's HTTPS traffic |
 | `sourcemap/file`, `sourcemap/url` | warning | Source maps shipped inside the app, or a `sourceMappingURL` in the bundle |
 | `scan/unreadable` | error | Part of the app could not be read, so it was not checked: the scan fails closed instead of passing silently |
 
@@ -302,7 +304,7 @@ no runtime dependencies. It parses:
 a large pentest report. gitleaks and trufflehog scan source and git history, not built apps. release-lint does one
 narrower job: a few seconds, no setup, in any CI step, and a short list of release mistakes with a fix for each.
 
-## Limits (0.2)
+## Limits (0.3)
 
 - Android hosts written as resource references (`@string/…`) are reported but not resolved yet.
 - Native code (`classes.dex`, the iOS executable's strings) is not scanned for secrets: SDKs make that too noisy.

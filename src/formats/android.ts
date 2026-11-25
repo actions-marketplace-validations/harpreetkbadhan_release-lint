@@ -1,23 +1,44 @@
-import type { AppModel, DeepLink, XmlElement } from '../types.js';
+import type { AppModel, DeepLink, NetworkException, XmlElement } from '../types.js';
 import { parseAxml } from './axml.js';
 import { MAX_BUNDLE_BYTES, MAX_CONFIG_BYTES, readBundle, readExpoConfig, readOptional, sourceMaps } from './common.js';
 import { parseProtoXml } from './proto.js';
 import type { ZipArchive } from './zip.js';
 
-/** Where an Android package keeps its manifest and assets, and how its manifest is encoded. */
+const NETWORK_CONFIG_ROOT = 'network-security-config';
+/** Only files containing the root element's name are parsed: UTF-8 (protobuf, UTF-8 pools) or UTF-16 (aapt2's default pool). */
+const NETWORK_CONFIG_MARKERS = [Buffer.from(NETWORK_CONFIG_ROOT, 'utf8'), Buffer.from(NETWORK_CONFIG_ROOT, 'utf16le')];
+const AXML_MAGIC = 0x0003;
+
+/** Where an Android package keeps its manifest, assets and XML resources, and how they are encoded. */
 interface Layout {
   manifest: string;
   assets: string;
   parseManifest: (buf: Buffer) => XmlElement;
+  /** XML resources that may hold the network security config. */
+  resourceXml: RegExp;
+  /** Parses a compiled XML resource; `undefined` for a raw file, which Android never reads as the config. */
+  parseResource: (buf: Buffer) => XmlElement | undefined;
 }
 
-/** .aab: protobuf manifest, everything under base/. */
+/** .aab: protobuf manifest and resources, everything under base/, full resource paths. */
 export const AAB_MANIFEST = 'base/manifest/AndroidManifest.xml';
-const AAB: Layout = { manifest: AAB_MANIFEST, assets: 'base/assets/', parseManifest: parseProtoXml };
+const AAB: Layout = {
+  manifest: AAB_MANIFEST,
+  assets: 'base/assets/',
+  parseManifest: parseProtoXml,
+  resourceXml: /^base\/res\/xml[^/]*\/[^/]+\.xml$/,
+  parseResource: parseProtoXml,
+};
 
-/** .apk: binary XML manifest at the root. */
+/** .apk: binary XML at the root. Release builds often shorten resource paths (res/xml/x.xml → res/zq.xml). */
 export const APK_MANIFEST = 'AndroidManifest.xml';
-const APK: Layout = { manifest: APK_MANIFEST, assets: 'assets/', parseManifest: parseAxml };
+const APK: Layout = {
+  manifest: APK_MANIFEST,
+  assets: 'assets/',
+  parseManifest: (buf) => parseAxml(buf),
+  resourceXml: /^res\/(?:xml[^/]*\/)?[^/]+\.xml$/,
+  parseResource: (buf) => (buf.length >= 2 && buf.readUInt16LE(0) === AXML_MAGIC ? parseAxml(buf, { root: NETWORK_CONFIG_ROOT }) : undefined),
+};
 
 const descendants = (el: XmlElement, name: string): XmlElement[] =>
   el.children.flatMap((child) => [...(child.name === name ? [child] : []), ...descendants(child, name)]);
@@ -43,6 +64,7 @@ async function readAndroid(zip: ZipArchive, file: string, layout: Layout): Promi
   const bundle = await readOptional(zip, bundleName, problems, (buf) => readBundle(bundleName, buf), MAX_BUNDLE_BYTES);
   const configName = `${layout.assets}app.config`;
   const expoConfig = await readOptional(zip, configName, problems, (buf) => readExpoConfig(configName, buf), MAX_CONFIG_BYTES);
+  const networkExceptions = await readNetworkExceptions(zip, layout, problems);
 
   return {
     platform: 'android',
@@ -55,6 +77,7 @@ async function readAndroid(zip: ZipArchive, file: string, layout: Layout): Promi
       ...(usesCleartextTraffic !== undefined ? { usesCleartextTraffic } : {}),
     },
     deepLinks: application ? intentFilterHosts(application, layout.manifest) : [],
+    ...(networkExceptions.length > 0 ? { networkExceptions } : {}),
     ...(bundle ? { bundle } : {}),
     ...(expoConfig ? { expoConfig } : {}),
     sourceMaps: sourceMaps(zip),
@@ -70,5 +93,46 @@ function intentFilterHosts(application: XmlElement, file: string): DeepLink[] {
       .map((data) => data.attributes['android:host'])
       .filter((host): host is string => Boolean(host))
       .map((host) => ({ host, kind, file }));
+  });
+}
+
+/**
+ * The network security config, found by its root element rather than its name (release APKs shorten resource paths).
+ * ponytail: does not resolve android:networkSecurityConfig through resources.arsc; a second, unreferenced config file
+ * would be reported too. Resolve the reference if that ever shows up in a real build.
+ */
+async function readNetworkExceptions(zip: ZipArchive, layout: Layout, problems: string[]): Promise<NetworkException[]> {
+  const names = [...zip.entries.values()].filter((e) => layout.resourceXml.test(e.name) && e.size <= MAX_CONFIG_BYTES).map((e) => e.name);
+  const found: NetworkException[] = [];
+  for (const name of names) {
+    const parse = (buf: Buffer) => (NETWORK_CONFIG_MARKERS.some((marker) => buf.includes(marker)) ? layout.parseResource(buf) : undefined);
+    const root = await readOptional(zip, name, problems, parse, MAX_CONFIG_BYTES);
+    if (root?.name === NETWORK_CONFIG_ROOT) found.push(...networkConfigExceptions(root, name));
+  }
+  return found;
+}
+
+const trustsUserCas = (el: XmlElement) =>
+  el.children.some((anchors) => anchors.name === 'trust-anchors' && anchors.children.some((c) => c.name === 'certificates' && c.attributes['src'] === 'user'));
+
+/** Plain HTTP and user CAs that apply to release builds. `<debug-overrides>` is skipped: it only applies to debuggable builds. */
+function networkConfigExceptions(root: XmlElement, file: string): NetworkException[] {
+  const domainConfig = (el: XmlElement, inheritedCleartext: boolean): NetworkException[] => {
+    const value = el.attributes['cleartextTrafficPermitted'];
+    const cleartext = value === undefined ? inheritedCleartext : value === 'true';
+    const domains = el.children.filter((c) => c.name === 'domain').map((d) => d.text?.trim() ?? '').filter(Boolean);
+    return [
+      ...(cleartext ? domains.map((host): NetworkException => ({ kind: 'cleartext', host, evidence: `<domain-config cleartextTrafficPermitted="true"> ${host}`, file })) : []),
+      ...(trustsUserCas(el) ? [{ kind: 'user-ca', host: domains.join(', ') || '*', evidence: `<domain-config> for ${domains.join(', ')} trusts <certificates src="user">`, file } satisfies NetworkException] : []),
+      ...el.children.filter((c) => c.name === 'domain-config').flatMap((child) => domainConfig(child, cleartext)),
+    ];
+  };
+  return root.children.flatMap((el): NetworkException[] => {
+    if (el.name === 'domain-config') return domainConfig(el, false);
+    if (el.name !== 'base-config') return [];
+    return [
+      ...(el.attributes['cleartextTrafficPermitted'] === 'true' ? [{ kind: 'cleartext', host: '*', evidence: '<base-config cleartextTrafficPermitted="true">', file } satisfies NetworkException] : []),
+      ...(trustsUserCas(el) ? [{ kind: 'user-ca', host: '*', evidence: '<base-config> trusts <certificates src="user">', file } satisfies NetworkException] : []),
+    ];
   });
 }

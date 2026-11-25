@@ -77,11 +77,14 @@ function element(buf: Buffer, depth: number): XmlElement {
     if (key in attributes) throw new ReleaseLintError(`The manifest sets ${key} twice`);
     attributes[key] = attributeValue(attr);
   }
-  const children = messages(fields, 5)
+  const nodes = messages(fields, 5);
+  const children = nodes
     .map((node) => node.get(1)?.[0])
     .filter(Buffer.isBuffer)
     .map((child) => element(child, depth + 1));
-  return { name: text(fields.get(3)?.[0]), attributes, children };
+  // A child XmlNode holds either an element (field 1) or text (field 2), e.g. the host in <domain>.
+  const content = nodes.map((node) => text(node.get(2)?.[0])).join('');
+  return { name: text(fields.get(3)?.[0]), attributes, children, ...(content ? { text: content } : {}) };
 }
 
 /** The compiled value, as Android reads it (boolean, int or `@0x…` reference); the source text only for strings. */

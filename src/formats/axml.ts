@@ -6,6 +6,7 @@ const RES_STRING_POOL_TYPE = 0x0001;
 const RES_XML_RESOURCE_MAP_TYPE = 0x0180;
 const RES_XML_START_ELEMENT_TYPE = 0x0102;
 const RES_XML_END_ELEMENT_TYPE = 0x0103;
+const RES_XML_CDATA_TYPE = 0x0104;
 const UTF8_FLAG = 0x100;
 const NO_INDEX = 0xffffffff;
 const ATTRIBUTE_SIZE = 20;
@@ -21,6 +22,8 @@ const MAX_ELEMENTS = 20_000;
 const MAX_ATTRIBUTES = 100_000;
 /** Strings are decoded on demand; many entries pointing at one huge string must not multiply memory. */
 const MAX_DECODED_BYTES = 16 * 1024 * 1024;
+/** A host in <domain> is short; repeating one cached string in many text chunks must not grow without bound. */
+const MAX_TEXT_LENGTH = 64 * 1024;
 
 /**
  * The android:* attributes release-lint reads, by resource ID (checked with `aapt2 dump xmltree` on a release APK).
@@ -48,18 +51,19 @@ type Lookup = (index: number) => string;
  * writes (a second string pool, duplicate or fake-namespaced attributes, elements after the root), so a crafted
  * manifest cannot show the scanner something different from what the device runs.
  */
-export function parseAxml(buf: Buffer): XmlElement {
+export function parseAxml(buf: Buffer, { root = 'manifest' }: { root?: string } = {}): XmlElement {
   try {
-    return parse(buf);
+    return parse(buf, root);
   } catch (error) {
     if (error instanceof RangeError) throw malformed();
     throw error;
   }
 }
 
-function parse(buf: Buffer): XmlElement {
+function parse(buf: Buffer, expectedRoot: string): XmlElement {
+  const subject = expectedRoot === 'manifest' ? 'AndroidManifest.xml' : 'The file';
   if (buf.length < 8 || buf.readUInt16LE(0) !== RES_XML_TYPE) {
-    throw new ReleaseLintError('AndroidManifest.xml is not Android binary XML');
+    throw new ReleaseLintError(`${subject} is not Android binary XML`);
   }
   const end = buf.readUInt32LE(4);
   if (end > buf.length) throw malformed();
@@ -96,12 +100,19 @@ function parse(buf: Buffer): XmlElement {
     } else if (type === RES_XML_END_ELEMENT_TYPE) {
       if (stack.length === 0) throw malformed();
       stack.pop();
+    } else if (type === RES_XML_CDATA_TYPE) {
+      // Text inside the current element, e.g. the host in <domain>: a string index right after the node header.
+      const parent = stack[stack.length - 1];
+      if (!str || !parent) throw malformed();
+      const text = (parent.text ?? '') + str(chunk.readUInt32LE(headerSize));
+      if (text.length > MAX_TEXT_LENGTH) throw malformed();
+      parent.text = text;
     }
     pos += size;
   }
   if (!root) throw new ReleaseLintError('The manifest has no root element');
   if (stack.length > 0) throw malformed();
-  if (root.name !== 'manifest') throw new ReleaseLintError('AndroidManifest.xml does not start with <manifest>');
+  if (root.name !== expectedRoot) throw new ReleaseLintError(`${subject} does not start with <${expectedRoot}>`);
   return root;
 }
 
