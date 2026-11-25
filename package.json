@@ -1,6 +1,6 @@
 {
   "name": "app-release-lint",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Lint a built iOS or Android app (.ipa, .aab, .apk) for release mistakes: leaked secrets, staging and localhost servers, source maps, debug flags and staging deep links.",
   "keywords": [
     "react-native",
