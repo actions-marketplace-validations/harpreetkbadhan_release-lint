@@ -46,7 +46,7 @@ Or install it (`npm i -D app-release-lint`) and run `release-lint`. Node 20.19 o
 **Built your app with Cursor, Claude Code or Codex?** Run it before you upload. When code is written fast, a secret key or
 a staging URL slips into the build easily, and the built file is where you can see it.
 
-![release-lint finding a leaked Stripe key, a staging App Link and localhost URLs in a release build of an Expo app](docs/demo.gif)
+![npx app-release-lint, run with no file in an Expo project, finds the release build and reports a leaked Stripe key, a staging App Link and localhost URLs](docs/demo.gif)
 
 ## Start here
 
