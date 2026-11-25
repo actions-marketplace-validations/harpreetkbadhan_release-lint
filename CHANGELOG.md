@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.3
+
+- README: **Let your agent do it**, a copy-paste prompt for Claude Code, Codex, Cursor or Copilot. The agent finds
+  the release build, runs release-lint, explains each finding and fixes it at its source (app config, EAS profile, env
+  vars).
+- **Claude Code plugin.** `/plugin marketplace add harpreetkbadhan/release-lint`, then
+  `/plugin install app-release-lint@release-lint`, then type `/app-release-lint`. The skill is now named
+  `app-release-lint` to match; its file path is unchanged.
+- No changes to the CLI.
+
 ## 0.2.2
 
 - No false alarms from the Sentry SDK: its built-in Spotlight URL (`http://localhost:8969/stream`) and links to Sentry's

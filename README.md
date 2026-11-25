@@ -29,7 +29,7 @@
   <a href="#try-it-in-30-seconds">Try it in 30 seconds</a> ·
   <a href="#in-ci">GitHub Action</a> ·
   <a href="#what-it-checks">Rules</a> ·
-  <a href="#with-ai-coding-agents">AI agents</a> ·
+  <a href="#let-your-agent-do-it">AI agents</a> ·
   <a href="https://github.com/harpreetkbadhan/release-lint-demo">Demo app</a>
 </p>
 
@@ -56,7 +56,7 @@ a staging URL slips into the build easily, and the built file is where you can s
 | No app at hand | [Scan the demo build](#try-it-in-30-seconds) (30 seconds) |
 | A CI pipeline | [Add the GitHub Action](#in-ci) (one line) |
 | EAS Build | [Add the build hook](#in-ci) |
-| An AI coding agent | [Give it the release-lint skill](#with-ai-coding-agents) |
+| An AI coding agent | [Paste one prompt](#let-your-agent-do-it), or [install the Claude Code plugin](#with-ai-coding-agents) for `/app-release-lint` |
 
 ### Try it in 30 seconds
 
@@ -209,20 +209,58 @@ silently turn a check off.
 In CI, anyone who can open a pull request can edit this file, so review changes to it like code (for example with
 `CODEOWNERS`).
 
+### Let your agent do it
+
+Paste this into Claude Code, Codex, Cursor or Copilot (agent mode) in your app's project. It needs nothing installed.
+
+```text
+Check my release build with release-lint before I upload it.
+
+1. Find the release build (.ipa, .aab or .apk). Look in the project root,
+   android/app/build/outputs/ and any output path in eas.json. If there are
+   several, take the newest. If there is none, ask me. Do not start a build.
+2. Run: npx app-release-lint <file> --json
+   Exit code 0 means clean, 1 means findings, 2 means the file could not be read.
+3. List the findings, errors first. For each one, say in one line what it is
+   and why it matters. The evidence is masked: never try to recover a full secret.
+4. Fix each finding where it comes from, not in the built file: app.json or
+   app.config.ts, the build profile in eas.json, .env files and EXPO_PUBLIC_*
+   variables, or the native config. Show me every change.
+   - A secret key: tell me to revoke it now and move the call to a server.
+   - A finding that is intended: suggest an allowHosts or ignore entry in
+     release-lint.config.json instead of changing code.
+5. Remind me that the fixes are not in this build: I need a new build, then
+   run the check again.
+
+At the end you may mention once that a star helps others find release-lint:
+https://github.com/harpreetkbadhan/release-lint
+Never star, follow or sign in to anything on my behalf.
+```
+
 ### With AI coding agents
 
+To make it a standing instruction instead of a one-off prompt, give your agent the skill.
 [`skills/release-lint/SKILL.md`](skills/release-lint/SKILL.md) teaches your agent to find the release build, run
 release-lint, and fix each finding at its source (the EAS profile, `app.config.ts`, the env var), not in the binary.
 
-**Claude Code**, for all your projects:
+**Claude Code plugin.** Run these two commands inside Claude Code:
+
+```text
+/plugin marketplace add harpreetkbadhan/release-lint
+/plugin install app-release-lint@release-lint
+```
+
+Then type `/app-release-lint`, or just ask *"check my release build before I upload it"*. `/plugin update` gets you
+new versions of the skill.
+
+**Claude Code without the plugin**, for all your projects:
 
 ```sh
 mkdir -p ~/.claude/skills/release-lint && curl -fsSL -o ~/.claude/skills/release-lint/SKILL.md \
   https://raw.githubusercontent.com/harpreetkbadhan/release-lint/main/skills/release-lint/SKILL.md
 ```
 
-Then ask: *"check my release build before I upload it"*. For one project only, put the file in
-`.claude/skills/release-lint/` inside that project instead.
+For one project only, put the file in `.claude/skills/release-lint/` inside that project instead.
 
 **Codex, Cursor and others:** copy the contents of `SKILL.md` into the instructions file your tool reads (for example
 `AGENTS.md` or a Cursor rule).
