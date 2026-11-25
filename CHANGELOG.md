@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- New rule `secret/google-oauth-client-secret`: Google OAuth client secrets (`GOCSPX-…`) in the bundle or Expo config.
+  Thanks [@techkayacodes](https://github.com/techkayacodes) (#7), the first outside contribution.
+
 ## 0.2.0
 
 - **`.apk` support.** Reads the binary XML `AndroidManifest.xml` (UTF-16 and UTF-8 string pools; attribute names
