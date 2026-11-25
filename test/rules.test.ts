@@ -99,6 +99,17 @@ describe('host rules', () => {
     expect(ids(run(withBundle('http://localhost:8081/api')))).toEqual(['host/localhost']);
   });
 
+  it("ignores the Sentry SDK's built-in Spotlight URL and Sentry's own domains", () => {
+    expect(run(withBundle('http://localhost:8969/stream', 'https://develop.sentry.dev/sdk/expected-features/#feature-flags', 'https://o1.ingest.sentry.io/api/1/'))).toEqual([]);
+    expect(ids(run(withBundle('http://localhost:8969/api')))).toEqual(['host/localhost']);
+  });
+
+  it('ignores framework URLs inside a plain JavaScript bundle too, but not the app’s own URLs next to them', () => {
+    const js = 'var a="http://localhost:8081/",b="http://localhost:8969/stream",c="http://localhost:3000/api";';
+    const model = app({ bundle: { file: BUNDLE, kind: 'javascript', approximate: false, strings: [js] } });
+    expect(run(model).map((f) => f.evidence)).toEqual(['http://localhost:3000/api']);
+  });
+
   it('flags a bare host:port', () => {
     expect(ids(run(withBundle('localhost:8081')))).toEqual(['host/localhost']);
   });

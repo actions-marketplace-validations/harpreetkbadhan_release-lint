@@ -34,8 +34,10 @@
 </p>
 
 ```sh
-npx app-release-lint app-release.ipa     # or .aab / .apk
+npx app-release-lint app-release.aab
 ```
+
+The same command works for `.ipa` and `.apk` files.
 
 🔑 secret keys · 🌐 staging / localhost / LAN URLs · 🔗 staging deep links · 🐞 debug builds · 🗺️ source maps
 

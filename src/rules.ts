@@ -86,7 +86,7 @@ const BARE_HOST_PORT = /(?<![\w.:/@-])(localhost|(?:\d{1,3}\.){3}\d{1,3}):\d{2,5
 const TUNNEL_SUFFIXES = ['ngrok.io', 'ngrok.app', 'ngrok-free.app', 'ngrok-free.dev', 'loca.lt', 'localtunnel.me', 'trycloudflare.com', 'serveo.net', 'localhost.run', 'lhr.life'];
 const LOCAL_ONLY_TLDS = ['local', 'test', 'internal', 'lan'];
 /** SDKs ship their vendor's sandbox URLs on purpose (receipt validation, payments). */
-const VENDOR_DOMAINS = ['apple.com', 'paypal.com', 'paypalobjects.com', 'braintreegateway.com', 'plaid.com', 'adyen.com', 'stripe.com', 'klarna.com', 'mollie.com', 'checkout.com', 'squareupsandbox.com', 'google.com', 'googleapis.com', 'facebook.com'];
+const VENDOR_DOMAINS = ['apple.com', 'paypal.com', 'paypalobjects.com', 'braintreegateway.com', 'plaid.com', 'adyen.com', 'stripe.com', 'klarna.com', 'mollie.com', 'checkout.com', 'squareupsandbox.com', 'google.com', 'googleapis.com', 'facebook.com', 'sentry.io', 'sentry.dev'];
 const ENV_WORDS = new Set(['staging', 'stage', 'stg', 'dev', 'develop', 'development', 'qa', 'uat', 'test', 'testing', 'preprod', 'sandbox']);
 /** Words that mark an environment even inside the registrable name (`myapp-staging.com`); "dev" and "test" are too common there. */
 const STRONG_ENV_WORDS = new Set(['staging', 'stg', 'preprod', 'uat', 'qa', 'sandbox']);
@@ -143,18 +143,20 @@ export function classifyHost(rawHost: string): HostIssue | undefined {
 }
 
 /**
- * Strings React Native itself puts in every release bundle (found by scanning a blank Expo SDK 58 / RN 0.88 release
- * build). Matched as whole bundle strings only, so an app's own `http://localhost:8081/api` is still reported.
+ * URLs that frameworks and SDKs put in every release bundle, found by scanning real release builds and the public
+ * packages: React Native's dev server default and the Sentry SDK's Spotlight sidecar. Matched as whole URLs, in
+ * Hermes and plain JavaScript bundles alike, so an app's own `http://localhost:8081/api` is still reported.
  */
-const FRAMEWORK_STRINGS = new Set(['http://localhost:8081/']);
+const FRAMEWORK_URLS = new Set(['http://localhost:8081/', 'http://localhost:8969/stream']);
 
 const HOST_FIX ='Make sure release builds use production URLs (check env-based config such as EXPO_PUBLIC_* or app.config.ts). If this host is intended, add it to allowHosts in release-lint.config.json.';
 
 function hostRules(texts: Text[], { allowHosts }: RuleOptions): Finding[] {
   const seen = new Set<string>();
   return texts.flatMap(({ value, location, fromConfig }) => {
-    if (!fromConfig && FRAMEWORK_STRINGS.has(value)) return [];
-    const urls = [...value.matchAll(URL_PATTERN)].map((m) => ({ host: m[1] ?? '', evidence: urlEvidence(m[0]) }));
+    const urls = [...value.matchAll(URL_PATTERN)]
+      .map((m) => ({ host: m[1] ?? '', evidence: urlEvidence(m[0]) }))
+      .filter(({ evidence }) => fromConfig || !FRAMEWORK_URLS.has(evidence));
     const bare = [...value.matchAll(BARE_HOST_PORT)].map((m) => ({ host: m[1] ?? '', evidence: m[0] }));
     return [...urls, ...bare].flatMap(({ host, evidence }) => {
       const issue = classifyHost(host);

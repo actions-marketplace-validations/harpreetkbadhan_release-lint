@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.2
+
+- No false alarms from the Sentry SDK: its built-in Spotlight URL (`http://localhost:8969/stream`) and links to Sentry's
+  own domains (`develop.sentry.dev`, `*.sentry.io`) are no longer reported. Found by scanning a real Sentry-enabled app.
+- Framework URLs such as React Native's `http://localhost:8081/` are now also ignored in plain JavaScript bundles, not
+  only in Hermes ones. An app's own URLs next to them are still reported.
+- README: the quick-start command no longer has an inline `#` comment, which zsh (the macOS default shell) passed on
+  as extra arguments when copied.
+
 ## 0.2.1
 
 - New rule `secret/google-oauth-client-secret`: Google OAuth client secrets (`GOCSPX-…`) in the bundle or Expo config.
