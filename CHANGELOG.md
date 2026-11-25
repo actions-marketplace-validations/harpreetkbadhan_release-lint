@@ -4,6 +4,8 @@
 
 - New rule `secret/google-oauth-client-secret`: Google OAuth client secrets (`GOCSPX-…`) in the bundle or Expo config.
   Thanks [@techkayacodes](https://github.com/techkayacodes) (#7), the first outside contribution.
+- New rule `secret/mapbox-secret-token`: Mapbox secret tokens (`sk.…`); public `pk.` tokens are never reported.
+  Thanks [@konpeeyush](https://github.com/konpeeyush) (#9).
 
 ## 0.2.0
 
