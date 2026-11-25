@@ -50,13 +50,13 @@ a staging URL slips into the build easily, and the built file is where you can s
 
 ## Start here
 
-| You have | Do this |
-|---|---|
-| A built `.ipa`, `.aab` or `.apk` | `npx app-release-lint path/to/app.aab` |
-| No app at hand | [Scan the demo build](#try-it-in-30-seconds) (30 seconds) |
-| A CI pipeline | [Add the GitHub Action](#in-ci) (one line) |
-| EAS Build | [Add the build hook](#in-ci) |
-| An AI coding agent | [Paste one prompt](#paste-one-prompt-into-your-agent), or [install the Claude Code plugin](#with-ai-coding-agents) for `/app-release-lint` |
+| You have | Do this | Time |
+|---|---|---|
+| A built `.ipa`, `.aab` or `.apk` | `npx app-release-lint` in your project (it finds the build), or `npx app-release-lint path/to/app.aab` | 1 minute |
+| No app at hand | [Scan the demo build](#try-it-in-30-seconds) | 30 seconds |
+| A CI pipeline | [Add the GitHub Action](#in-ci) (one line) | 5 minutes |
+| EAS Build | [Add the build hook](#in-ci) | 5 minutes |
+| An AI coding agent | [Paste one prompt](#paste-one-prompt-into-your-agent), or [install the Claude Code plugin](#with-ai-coding-agents) for `/app-release-lint` | 2 minutes |
 
 ### Try it in 30 seconds
 
@@ -78,7 +78,7 @@ or `.aab` and checks what is really inside.
 Real output for the release build of [release-lint-demo](https://github.com/harpreetkbadhan/release-lint-demo), a blank `create-expo-app` (Expo SDK 58, React Native 0.88) with planted mistakes:
 
 ```
-release-lint 0.1.1 · app-release.aab · Android · com.example.releaselintdemo 1.0.0 (1) · Hermes v99
+release-lint 0.2.4 · release-lint-demo.aab · Android · com.example.releaselintdemo 1.0.0 (1) · Hermes v99
 
  ERROR  secret/stripe-secret-key  Stripe live secret key
         sk_live_••••p7dc  (base/assets/index.android.bundle)
@@ -101,6 +101,7 @@ release-lint 0.1.1 · app-release.aab · Android · com.example.releaselintdemo 
         fix: Make sure release builds use production URLs (check env-based config such as EXPO_PUBLIC_* or app.config.ts). If this host is intended, add it to allowHosts in release-lint.config.json.
 
  3 errors · 2 warnings · 0 info
+ Do not upload this build. Fix the findings at their source, make a new build and run release-lint again.
 ```
 
 ## What it checks
@@ -136,7 +137,12 @@ release-lint <app.ipa|app.aab|app.apk> [options]
   --no-color           Plain output (NO_COLOR is respected too)
 ```
 
-Exit codes: `0` nothing at or above `--fail-on`, `1` findings at or above `--fail-on`, `2` the file could not be read.
+Exit codes: `0` nothing at or above `--fail-on`, `1` findings at or above `--fail-on`, `2` the file could not be read, or no single build was found.
+
+**No file?** Run `npx app-release-lint` in your project and it finds the build: it looks in the project folder,
+`build/`, `ios/build/` and the release variants in `android/app/build/outputs/` (debug builds are skipped). One build
+found: it scans that one and says which. Several: it asks which one, newest first; in CI and AI agents it lists them
+and exits `2`.
 
 ### In CI
 
@@ -237,6 +243,8 @@ https://github.com/harpreetkbadhan/release-lint
 Never star, follow or sign in to anything on my behalf.
 ```
 
+Only want a report? Add a last line: *Report only: do not change any files.*
+
 ### With AI coding agents
 
 To make it a standing instruction instead of a one-off prompt, give your agent the skill.
@@ -264,6 +272,18 @@ For one project only, put the file in `.claude/skills/release-lint/` inside that
 
 **Codex, Cursor and others:** copy the contents of `SKILL.md` into the instructions file your tool reads (for example
 `AGENTS.md` or a Cursor rule).
+
+## If something goes wrong
+
+| You see | Do this |
+|---|---|
+| `No app file given, and none found in …` | Make the release build first, or pass its path: `npx app-release-lint path/to/app.aab`. For an EAS cloud build, download the file from its build page |
+| `Found 2 app files, newest first` | Pass the one you mean: `npx app-release-lint <file>`. In a terminal it asks instead |
+| `Not a zip file` | The file is not an `.ipa`, `.aab` or `.apk`, or the download was cut off. Download it again |
+| `File … not found` | Check the path. Put it in quotes if a folder name has a space |
+| `--ignore "…" is not a rule ID` | Use an ID from [What it checks](#what-it-checks), for example `host/non-production` or `secret/*` |
+| A finding you meant to ship | Add the host to `allowHosts`, or an `ignore` entry, in [the config file](#config-file) |
+| `unexpected error, please report it` | A bug in release-lint. [Open an issue](https://github.com/harpreetkbadhan/release-lint/issues) with the message, never the app file |
 
 ## How it works
 

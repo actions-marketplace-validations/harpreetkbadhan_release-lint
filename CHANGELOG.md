@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.4
+
+- **No file needed.** `npx app-release-lint` with no file finds the release build in the usual output folders (project
+  folder, `build/`, `ios/build/`, release variants in `android/app/build/outputs/`; debug builds are skipped). One
+  build: it scans it and says which. Several: it asks which one, newest first, in a terminal; in CI and AI agents it
+  lists them and exits 2. It never walks the whole tree, so `node_modules` is never read.
+- The text report now ends with a plain answer that matches the exit code: *Do not upload this build…*, or, when the
+  findings are below `--fail-on`, *Nothing at or above --fail-on …, read the findings above before you upload*.
+- README: an *If something goes wrong* table, a time column in *Start here*, and a report-only line for the agent
+  prompt. The real-output example is regenerated with 0.2.4.
+
 ## 0.2.3
 
 - README: **Paste one prompt into your agent**, a copy-paste prompt for Claude Code, Codex, Cursor or Copilot. The agent finds

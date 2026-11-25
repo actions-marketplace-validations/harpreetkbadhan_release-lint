@@ -27,7 +27,11 @@ function engine(app: AppModel): string {
 }
 
 /** The human report: a header line, each finding with evidence, location and fix, and a summary. */
-export function formatText(app: AppModel, findings: Finding[], { color, version }: { color: boolean; version: string }): string {
+export function formatText(
+  app: AppModel,
+  findings: Finding[],
+  { color, version, blocks, failOn }: { color: boolean; version: string; blocks: boolean; failOn: string },
+): string {
   // validateStream: false — whether to color is decided by the caller (TTY, NO_COLOR, --no-color).
   const paint = (style: Style, text: string) => (color ? styleText(style, text, { validateStream: false }) : text);
   const platform = app.platform === 'ios' ? 'iOS' : 'Android';
@@ -45,7 +49,11 @@ export function formatText(app: AppModel, findings: Finding[], { color, version 
     ].join('\n');
   });
   const summary = `${plural(count(findings, 'error'), 'error')} · ${plural(count(findings, 'warning'), 'warning')} · ${count(findings, 'info')} info`;
-  return `${header}\n\n${body.join('\n\n')}\n\n ${summary}\n`;
+  // The last line answers "can I upload?", matching the exit code.
+  const verdict = blocks
+    ? paint('red', 'Do not upload this build. Fix the findings at their source, make a new build and run release-lint again.')
+    : paint('yellow', `Nothing at or above --fail-on ${failOn}. Read the findings above before you upload.`);
+  return `${header}\n\n${body.join('\n\n')}\n\n ${summary}\n ${verdict}\n`;
 }
 
 const GITHUB_LEVELS: Record<Severity, string> = { error: 'error', warning: 'warning', info: 'notice' };

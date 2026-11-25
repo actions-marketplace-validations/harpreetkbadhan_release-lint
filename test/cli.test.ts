@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -11,7 +11,10 @@ const STRIPE_LIVE = 'sk_' + 'live_' + '4eC39HqLyjWDarjtT1zdp7dc';
 const text = (value: string) => Buffer.from(value);
 const DOMAINS = 'com.apple.developer.associated-domains';
 
-async function run(argv: string[], { cwd, color = false, env = {} }: { cwd?: string; color?: boolean; env?: Record<string, string> } = {}) {
+async function run(
+  argv: string[],
+  { cwd, color = false, env = {}, ask }: { cwd?: string; color?: boolean; env?: Record<string, string>; ask?: (question: string) => Promise<string> } = {},
+) {
   const out: string[] = [];
   const err: string[] = [];
   const code = await main(argv, {
@@ -20,6 +23,7 @@ async function run(argv: string[], { cwd, color = false, env = {} }: { cwd?: str
     cwd: cwd ?? (await mkdtemp(join(tmpdir(), 'release-lint-cwd-'))),
     color,
     env,
+    ...(ask ? { ask } : {}),
   });
   return { code, stdout: out.join(''), stderr: err.join('') };
 }
@@ -52,6 +56,13 @@ describe('release-lint CLI', () => {
     expect(stdout).toMatch(/fix: /);
     expect(stdout).toContain('2 errors · 1 warning · 0 info');
     expect(stdout).not.toContain(STRIPE_LIVE);
+    expect(stdout.trimEnd().split('\n').at(-1)).toBe(' Do not upload this build. Fix the findings at their source, make a new build and run release-lint again.');
+  });
+
+  it('ends with a softer verdict when the findings are below --fail-on', async () => {
+    const { code, stdout } = await run([await badIpa(), '--fail-on', 'none']);
+    expect(code).toBe(0);
+    expect(stdout.trimEnd().split('\n').at(-1)).toBe(' Nothing at or above --fail-on none. Read the findings above before you upload.');
   });
 
   it('prints JSON with --json, secrets still masked', async () => {
@@ -106,6 +117,57 @@ describe('release-lint CLI', () => {
     expect(await run(['a.ipa', 'b.ipa'])).toMatchObject({ code: 2, stderr: expect.stringContaining('one app file') });
     expect(await run(['--bogus'])).toMatchObject({ code: 2, stderr: expect.stringContaining('--bogus') });
     expect(await run(['a.ipa', '--fail-on', 'loud'])).toMatchObject({ code: 2, stderr: expect.stringContaining('--fail-on') });
+  });
+
+  describe('with no app file given', () => {
+    /** A project folder holding these app files, oldest first. */
+    async function projectWith(files: Record<string, Uint8Array>): Promise<string> {
+      const cwd = await mkdtemp(join(tmpdir(), 'release-lint-project-'));
+      let seconds = 1000;
+      for (const [path, bytes] of Object.entries(files)) {
+        await mkdir(dirname(join(cwd, path)), { recursive: true });
+        await writeFile(join(cwd, path), bytes);
+        await utimes(join(cwd, path), seconds, seconds);
+        seconds += 100;
+      }
+      return cwd;
+    }
+    const cleanIpa = () => ipa({ bundle: hbc({ strings: ['https://api.example.com'], identifiers: ['x'] }) });
+    const leakyAab = () => aab({ bundle: hbc({ strings: [STRIPE_LIVE], identifiers: ['x'] }) });
+
+    it('scans the only build it finds and says which one', async () => {
+      const cwd = await projectWith({ 'android/app/build/outputs/bundle/release/app-release.aab': leakyAab() });
+      const { code, stdout, stderr } = await run(['--json'], { cwd });
+      expect(code).toBe(1);
+      expect(stderr).toContain('Scanning android/app/build/outputs/bundle/release/app-release.aab');
+      expect(JSON.parse(stdout)).toMatchObject({ findings: [{ ruleId: 'secret/stripe-secret-key' }] });
+    });
+
+    it('lists several builds newest first and exits 2 when it cannot ask', async () => {
+      const cwd = await projectWith({ 'Old.ipa': cleanIpa(), 'android/app/build/outputs/bundle/release/app-release.aab': leakyAab() });
+      const { code, stdout, stderr } = await run([], { cwd });
+      expect(code).toBe(2);
+      expect(stdout).toBe('');
+      expect(stderr).toMatch(/Found 2 app files.*\n.*1\) android\/app\/build\/outputs\/bundle\/release\/app-release\.aab\n.*2\) Old\.ipa/s);
+      expect(stderr).toContain('release-lint <file>');
+    });
+
+    it('lets you pick one in a terminal; Enter takes the newest', async () => {
+      const cwd = await projectWith({ 'Old.ipa': cleanIpa(), 'New.aab': leakyAab() });
+      expect(await run([], { cwd, ask: async () => '2' })).toMatchObject({ code: 0, stderr: expect.stringContaining('Scanning Old.ipa') });
+      expect(await run([], { cwd, ask: async () => '' })).toMatchObject({ code: 1, stderr: expect.stringContaining('Scanning New.aab') });
+      expect(await run([], { cwd, ask: async () => '3' })).toMatchObject({ code: 2, stderr: expect.stringContaining('Pick a number from 1 to 2') });
+      const cancelled = async () => Promise.reject(Object.assign(new Error('Aborted with Ctrl+D'), { name: 'AbortError' }));
+      expect(await run([], { cwd, ask: cancelled })).toMatchObject({ code: 2, stderr: expect.stringContaining('release-lint: No build picked\n') });
+    });
+
+    it('says where it looked when there is no build', async () => {
+      const { code, stderr } = await run([]);
+      expect(code).toBe(2);
+      expect(stderr).toContain('No app file given, and none found in');
+      expect(stderr).toContain('android/app/build/outputs/bundle/*release');
+      expect(stderr).toContain('Usage: release-lint');
+    });
   });
 
   it('exits 2 for an invalid config file', async () => {

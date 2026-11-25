@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createInterface } from 'node:readline/promises';
 import { main } from './cli.js';
 
 const color = Boolean(process.stdout.isTTY) && !process.env['NO_COLOR'] && process.env['TERM'] !== 'dumb';
@@ -8,7 +9,18 @@ process.stdout.on('error', (error: NodeJS.ErrnoException) => {
   if (error.code !== 'EPIPE') throw error;
 });
 
-main(process.argv.slice(2), { stdout: process.stdout, stderr: process.stderr, cwd: process.cwd(), color, env: process.env }).then(
+/** Only in a real terminal: CI, pipes and AI agents get a list and exit 2 instead of a prompt that never gets answered. */
+async function ask(question: string): Promise<string> {
+  const prompt = createInterface({ input: process.stdin, output: process.stderr });
+  try {
+    return await prompt.question(question);
+  } finally {
+    prompt.close();
+  }
+}
+const interactive = Boolean(process.stdin.isTTY && process.stderr.isTTY);
+
+main(process.argv.slice(2), { stdout: process.stdout, stderr: process.stderr, cwd: process.cwd(), color, env: process.env, ...(interactive ? { ask } : {}) }).then(
   (code) => {
     process.exitCode = code;
   },

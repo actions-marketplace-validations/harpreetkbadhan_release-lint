@@ -3,6 +3,7 @@ import { appendFile, readFile, writeFile } from 'node:fs/promises';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
+import { findBuilds, SEARCHED_FOLDERS } from './find-build.js';
 import { readApp } from './formats/app.js';
 import { formatAnnotations, formatJson, formatSarif, formatSummary, formatText } from './report.js';
 import { runRules } from './rules.js';
@@ -21,6 +22,9 @@ const USAGE = `Usage: release-lint <app.ipa|app.aab|app.apk> [options]
 Checks a built iOS or Android app for release mistakes: leaked secrets, staging and
 localhost servers, source maps, debug flags and staging deep links.
 Only scan apps you own or have permission to audit.
+
+Without a file, it looks for a release build in the project folder, build/, ios/build/
+and android/app/build/outputs/ (release variants only).
 
 Options:
   --json               Print the report as JSON
@@ -54,6 +58,8 @@ export interface Io {
   color: boolean;
   /** Environment; `GITHUB_ACTIONS` / `GITHUB_STEP_SUMMARY` turn on annotations and the job summary. */
   env?: Record<string, string | undefined>;
+  /** Asks the user a question in a terminal. Absent in CI, pipes and agents: then several found builds are an error. */
+  ask?: (question: string) => Promise<string>;
 }
 
 /** Runs the CLI and returns the exit code: 0 clean, 1 findings at or above --fail-on, 2 unusable input. */
@@ -100,8 +106,8 @@ async function run(argv: string[], io: Io): Promise<number> {
     io.stdout.write(`${VERSION}\n`);
     return EXIT_OK;
   }
-  if (positionals.length !== 1) {
-    throw new ReleaseLintError(`${positionals.length === 0 ? 'no app file given' : 'give exactly one app file'}\n\n${USAGE}`);
+  if (positionals.length > 1) {
+    throw new ReleaseLintError(`give exactly one app file\n\n${USAGE}`);
   }
   const failOnFlag = values['fail-on'];
   if (failOnFlag !== undefined && !FAIL_LEVELS.includes(failOnFlag)) {
@@ -121,17 +127,50 @@ async function run(argv: string[], io: Io): Promise<number> {
   const config = await loadConfig(io.cwd, values.config);
   const failOn = (failOnFlag as FailOn | undefined) ?? config.failOn;
   const ignore = [...config.ignore, ...(values.ignore ?? []).map((rule) => ({ rule }))];
-  const app = await openApp(io.cwd, positionals[0] ?? '');
+  const file = positionals[0] ?? (await pickBuild(io));
+  const app = await openApp(io.cwd, file);
   const findings = runRules(app, { allowHosts: config.allowHosts }).filter((f) => !isIgnored(f, ignore));
 
-  io.stdout.write(values.json ? formatJson(app, findings, VERSION) : formatText(app, findings, { color: io.color && !values['no-color'], version: VERSION }));
+  const blocks = fails(findings, failOn);
+  io.stdout.write(
+    values.json ? formatJson(app, findings, VERSION) : formatText(app, findings, { color: io.color && !values['no-color'], version: VERSION, blocks, failOn }),
+  );
   if (values.sarif !== undefined) {
-    await writeSarif(io.cwd, values.sarif, positionals[0] ?? '', findings);
+    await writeSarif(io.cwd, values.sarif, file, findings);
   }
   if (!values.json && io.env?.['GITHUB_ACTIONS'] === 'true') {
     await reportToGitHub(app, findings, io);
   }
-  return fails(findings, failOn) ? EXIT_FINDINGS : EXIT_OK;
+  return blocks ? EXIT_FINDINGS : EXIT_OK;
+}
+
+/** No file given: the only release build in the usual output folders, or the one the user picks in a terminal. */
+async function pickBuild(io: Io): Promise<string> {
+  const builds = await findBuilds(io.cwd);
+  const [newest] = builds;
+  if (newest === undefined) {
+    throw new ReleaseLintError(`No app file given, and none found in ${SEARCHED_FOLDERS.join(', ')}\n\n${USAGE}`);
+  }
+  const file = builds.length === 1 ? newest.path : await choose(builds.map((b) => b.path), io);
+  io.stderr.write(`release-lint: Scanning ${file}\n`);
+  return file;
+}
+
+async function choose(paths: string[], io: Io): Promise<string> {
+  const list = `Found ${paths.length} app files, newest first:\n${paths.map((p, i) => `  ${i + 1}) ${p}`).join('\n')}\n`;
+  if (!io.ask) {
+    throw new ReleaseLintError(`${list}Run release-lint <file> with the one to scan.`);
+  }
+  io.stderr.write(list);
+  const answer = (await io.ask('Which one? [1] ').catch(() => {
+    throw new ReleaseLintError('No build picked'); // Ctrl+C or Ctrl+D at the prompt is a choice, not a crash.
+  })).trim();
+  const index = answer === '' ? 0 : Number(answer) - 1;
+  const chosen = Number.isInteger(index) ? paths[index] : undefined;
+  if (chosen === undefined) {
+    throw new ReleaseLintError(`Pick a number from 1 to ${paths.length}`);
+  }
+  return chosen;
 }
 
 /** The app file as SARIF expects it: relative to the working directory (the repository in CI), or a file:// URL. */
