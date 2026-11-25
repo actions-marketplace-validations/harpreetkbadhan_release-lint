@@ -252,6 +252,12 @@ function releaseRules(app: AppModel): Finding[] {
         : { ruleId: 'debug/debuggable', severity: 'error', message: 'Debuggable build: anyone can attach a debugger and read app data', evidence: 'android:debuggable="true"', location: 'AndroidManifest.xml', fix: 'Build the release variant (./gradlew bundleRelease) and never set android:debuggable in the manifest.' },
     );
   }
+  if (flags.simulator) {
+    findings.push({ ruleId: 'debug/simulator-build', severity: 'error', message: 'Simulator build: the App Store and TestFlight only accept device builds, so this says little about your release', evidence: 'DTPlatformName = iphonesimulator', location: 'Info.plist', fix: 'Archive for "Any iOS Device" in the Release configuration, export it, and scan the .ipa (or the .xcarchive).' });
+  }
+  if (app.unexported) {
+    findings.push({ ruleId: 'scan/signing-not-checked', severity: 'info', message: 'Signing not checked: Xcode signs the app again when you export it', evidence: 'iOS .app / .xcarchive', location: app.file, fix: 'To check development signing (get-task-allow) too, export the archive (Distribute App) and scan the .ipa.' });
+  }
   if (flags.usesCleartextTraffic) {
     findings.push({ ruleId: 'debug/cleartext-traffic', severity: 'warning', message: 'Plain HTTP is allowed to every host', evidence: 'android:usesCleartextTraffic="true"', location: 'AndroidManifest.xml', fix: 'Remove usesCleartextTraffic, or allow HTTP only for specific hosts with a network security config.' });
   }

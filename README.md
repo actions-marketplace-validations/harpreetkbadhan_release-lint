@@ -37,7 +37,7 @@
 npx app-release-lint app-release.aab
 ```
 
-The same command works for `.ipa` and `.apk` files.
+The same command works for `.ipa` and `.apk` files, and for an iOS `.app` or `.xcarchive` straight from Xcode.
 
 🔑 secret keys · 🌐 staging / localhost / LAN URLs · 🔗 staging deep links · 🐞 debug builds · 🗺️ source maps
 
@@ -115,6 +115,7 @@ release-lint 0.2.4 · release-lint-demo.aab · Android · com.example.releaselin
 | `host/*` | warning (error in Expo config) | `localhost`, `10.0.2.2`, private network addresses, ngrok and other tunnels, `.local` / `.test` domains, and staging / dev hosts |
 | `debug/debuggable` | error | Android `android:debuggable`, or a development-signed iOS build (`get-task-allow`) |
 | `debug/dev-bundle` | error | A development JavaScript bundle (`__DEV__` is true) |
+| `debug/simulator-build` | error | An iOS Simulator build: the App Store only accepts device builds |
 | `debug/cleartext-traffic`, `debug/arbitrary-loads` | warning | Plain HTTP allowed everywhere (Android manifest or `<base-config>`) or App Transport Security turned off (iOS) |
 | `debug/cleartext-exception` | warning | Plain HTTP allowed for one host: an Android network security config `<domain-config>`, or iOS `NSExceptionDomains`. Names dev hosts such as `10.0.2.2` or staging |
 | `debug/user-ca-trusted` | warning | The network security config trusts user-installed CA certificates outside `<debug-overrides>`, so anyone who installs one can read the app's HTTPS traffic |
@@ -282,6 +283,7 @@ For one project only, put the file in `.claude/skills/release-lint/` inside that
 | `No app file given, and none found in …` | Make the release build first, or pass its path: `npx app-release-lint path/to/app.aab`. For an EAS cloud build, download the file from its build page |
 | `Found 2 app files, newest first` | Pass the one you mean: `npx app-release-lint <file>`. In a terminal it asks instead |
 | `Not a zip file` | The file is not an `.ipa`, `.aab` or `.apk`, or the download was cut off. Download it again |
+| No `.ipa` on iOS | Scan what Xcode made: `npx app-release-lint "path/to/App.xcarchive"` (Window → Organizer → right-click the archive → Show in Finder), or a Release `.app` built for a device. Only signing waits for the exported `.ipa` |
 | `File … not found` | Check the path. Put it in quotes if a folder name has a space |
 | `--ignore "…" is not a rule ID` | Use an ID from [What it checks](#what-it-checks), for example `host/non-production` or `secret/*` |
 | A finding you meant to ship | Add the host to `allowHosts`, or an `ignore` entry, in [the config file](#config-file) |

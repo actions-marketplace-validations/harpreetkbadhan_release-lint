@@ -11,7 +11,7 @@ Only scan apps the user owns or has permission to audit. Never scan third-party 
 
 ## Run it
 
-1. Find the release file. Common places: the path the user gives, `*.ipa` / `*.aab` / `*.apk` in the project root, `android/app/build/outputs/bundle/release/app-release.aab`, `android/app/build/outputs/apk/release/app-release.apk`, or the `--output` of `eas build --local`. If you cannot find one, ask; do not build one unless the user asks.
+1. Find the release file. Common places: the path the user gives, `*.ipa` / `*.aab` / `*.apk` in the project root, `android/app/build/outputs/bundle/release/app-release.aab`, `android/app/build/outputs/apk/release/app-release.apk`, or the `--output` of `eas build --local`. On iOS an Xcode `.xcarchive` (in `~/Library/Developer/Xcode/Archives/`) or a Release `.app` built for a device also works, never a Simulator build. If you cannot find one, ask; do not build one unless the user asks.
 2. Run:
 
    ```sh

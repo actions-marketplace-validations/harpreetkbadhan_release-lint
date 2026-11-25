@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1
+
+- **iOS without an `.ipa`.** release-lint now reads an Xcode `.app` or `.xcarchive` folder directly, so you can scan an
+  archive before exporting it. Everything is checked as in the `.ipa`, except signing: Xcode signs the app again on
+  export, so `get-task-allow` is not judged there (an info note says so). Symlinks inside the folder are never followed.
+- New rule `debug/simulator-build` (error): an iOS Simulator build. It is not what you upload, so a clean scan of it
+  would prove nothing.
+
 ## 0.3.0
 
 - **Network security exceptions** (#6). New rules, from a Reddit thread on the launch post (thanks u/dawedev):

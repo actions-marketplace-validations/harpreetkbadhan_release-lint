@@ -26,6 +26,8 @@ Only scan apps you own or have permission to audit.
 Without a file, it looks for a release build in the project folder, build/, ios/build/
 and android/app/build/outputs/ (release variants only).
 
+On iOS it also reads an Xcode .app or .xcarchive folder, before export.
+
 Options:
   --json               Print the report as JSON
   --sarif <path>       Also write a SARIF 2.1.0 report (GitHub code scanning)

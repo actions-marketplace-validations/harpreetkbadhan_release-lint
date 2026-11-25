@@ -78,10 +78,14 @@ export interface AppModel {
     debuggable?: boolean;
     usesCleartextTraffic?: boolean;
     allowsArbitraryLoads?: boolean;
+    /** iOS: built for the Simulator (Info.plist DTPlatformName). */
+    simulator?: boolean;
   };
   deepLinks: DeepLink[];
   /** Present only when the app has any. */
   networkExceptions?: NetworkException[];
+  /** An iOS .app or .xcarchive folder: Xcode signs it again on export, so its signing is not judged. */
+  unexported?: true;
   bundle?: JsBundle;
   expoConfig?: { file: string; value: unknown };
   /** Archive entries ending in `.map`. */

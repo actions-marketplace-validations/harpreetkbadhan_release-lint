@@ -9,8 +9,11 @@ const ASSOCIATED_DOMAINS = 'com.apple.developer.associated-domains';
 
 const str = (value: unknown): string => (typeof value === 'string' ? value : '');
 
-/** Reads an .ipa into the app model. Throws `ReleaseLintError` if Info.plist is missing or broken. */
-export async function readIpa(zip: ZipArchive, file: string): Promise<AppModel> {
+/**
+ * Reads an .ipa into the app model. Throws `ReleaseLintError` if Info.plist is missing or broken.
+ * `exported: false` is an .app or .xcarchive from Xcode: its signing changes on export, so get-task-allow is not read.
+ */
+export async function readIpa(zip: ZipArchive, file: string, { exported = true }: { exported?: boolean } = {}): Promise<AppModel> {
   const infoName = [...zip.entries.keys()].find((name) => INFO_PLIST.test(name));
   if (!infoName) {
     throw new ReleaseLintError('Not an iOS app: no Payload/<App>.app/Info.plist');
@@ -31,7 +34,8 @@ export async function readIpa(zip: ZipArchive, file: string): Promise<AppModel> 
 
   const ats = info['NSAppTransportSecurity'];
   const arbitraryLoads = isPlistDict(ats) ? ats['NSAllowsArbitraryLoads'] : undefined;
-  const getTaskAllow = entitlements?.['get-task-allow'];
+  const getTaskAllow = exported ? entitlements?.['get-task-allow'] : undefined;
+  const simulator = info['DTPlatformName'] === 'iphonesimulator';
   const networkExceptions = atsExceptions(ats, infoName);
 
   return {
@@ -43,6 +47,7 @@ export async function readIpa(zip: ZipArchive, file: string): Promise<AppModel> 
     flags: {
       ...(typeof arbitraryLoads === 'boolean' ? { allowsArbitraryLoads: arbitraryLoads } : {}),
       ...(typeof getTaskAllow === 'boolean' ? { debuggable: getTaskAllow } : {}),
+      ...(simulator ? { simulator } : {}),
     },
     deepLinks: entitlements ? associatedDomains(entitlements, executable) : [],
     ...(networkExceptions.length > 0 ? { networkExceptions } : {}),
@@ -50,6 +55,7 @@ export async function readIpa(zip: ZipArchive, file: string): Promise<AppModel> 
     ...(expoConfig ? { expoConfig } : {}),
     sourceMaps: sourceMaps(zip),
     problems,
+    ...(exported ? {} : { unexported: true as const }),
   };
 }
 

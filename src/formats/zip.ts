@@ -3,7 +3,7 @@ import { inflateRawSync } from 'node:zlib';
 import { ReleaseLintError } from '../types.js';
 
 /** Largest single entry we inflate. A big app executable is ~200 MB; this also stops zip bombs. */
-const DEFAULT_MAX_ENTRY_BYTES = 512 * 1024 * 1024;
+export const DEFAULT_MAX_ENTRY_BYTES = 512 * 1024 * 1024;
 const EOCD_SIGNATURE = 0x06054b50;
 const EOCD_SIZE = 22;
 const MAX_COMMENT = 0xffff;
@@ -27,9 +27,15 @@ export interface ZipEntry {
   localHeaderOffset: number;
 }
 
+/** What readers need to know about a file in an app: a zip entry, or a file in an iOS .app folder. */
+export interface ArchiveEntry {
+  name: string;
+  size: number;
+}
+
 export interface ZipArchive {
   /** File entries by name. Directory entries are left out. */
-  entries: ReadonlyMap<string, ZipEntry>;
+  entries: ReadonlyMap<string, ArchiveEntry>;
   /** Reads and inflates one entry, up to `maxBytes` (never above the archive cap). Throws `ReleaseLintError` if it is missing, encrypted or too large. */
   read(name: string, maxBytes?: number): Promise<Buffer>;
   close(): Promise<void>;
