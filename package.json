@@ -1,0 +1,49 @@
+{
+  "name": "release-lint",
+  "version": "0.1.0",
+  "description": "Lint a built iOS or Android app (.ipa, .aab) for release mistakes: leaked secrets, staging and localhost servers, source maps, debug flags and staging deep links.",
+  "keywords": [
+    "react-native",
+    "expo",
+    "ipa",
+    "aab",
+    "release",
+    "lint",
+    "secrets",
+    "deep-links",
+    "hermes",
+    "ci"
+  ],
+  "license": "MIT",
+  "author": "Harpreet Kumar",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harpreetkbadhan/release-lint.git"
+  },
+  "homepage": "https://github.com/harpreetkbadhan/release-lint#readme",
+  "bugs": "https://github.com/harpreetkbadhan/release-lint/issues",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "bin": {
+    "release-lint": "./dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@vitest/coverage-v8": "^5.1.1",
+    "bplist-creator": "^0.4.0",
+    "fflate": "^0.8.3",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
+  }
+}
