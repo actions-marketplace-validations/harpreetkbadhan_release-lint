@@ -1,5 +1,8 @@
 # release-lint
 
+[![npm](https://img.shields.io/npm/v/app-release-lint)](https://www.npmjs.com/package/app-release-lint)
+[![CI](https://github.com/harpreetkbadhan/release-lint/actions/workflows/ci.yml/badge.svg)](https://github.com/harpreetkbadhan/release-lint/actions/workflows/ci.yml)
+
 Lint a **built** iOS or Android app for release mistakes, right before you ship it.
 
 ```sh
@@ -7,6 +10,10 @@ npx app-release-lint app-release.ipa     # or app-release.aab
 ```
 
 Or install it (`npm i -D app-release-lint`) and run `release-lint`. Node 20.19 or newer.
+
+![release-lint finding a leaked Stripe key, a staging App Link and localhost URLs in a release build of an Expo app](docs/demo.gif)
+
+Try it on [release-lint-demo](https://github.com/harpreetkbadhan/release-lint-demo), a blank Expo app with six planted mistakes.
 
 Code review and source scanners look at your repository. But what ships is the file your build produced, and that file
 often differs from what the repository suggests: `app.config.ts` switches on `APP_VARIANT` or env vars, Expo generates the
