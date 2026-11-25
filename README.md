@@ -107,6 +107,8 @@ Exit codes: `0` nothing at or above `--fail-on`, `1` findings at or above `--fai
 Findings appear as annotations on the run page and as a table in the job summary. The action uses the runner's Node
 (20.19 or newer; add `actions/setup-node` first if yours is older).
 
+[![release-lint annotations on a GitHub Actions run of the demo app](docs/ci-annotations.png)](https://github.com/harpreetkbadhan/release-lint-demo/actions/runs/45593915116)
+
 **Any other CI:** `npx app-release-lint@0 path/to/app.aab`. Exit code 1 fails the step.
 
 **EAS Build:** a build hook in `package.json` runs it on the build worker after every successful Android build (the path
