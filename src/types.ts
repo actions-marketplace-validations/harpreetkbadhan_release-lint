@@ -86,6 +86,8 @@ export interface AppModel {
   networkExceptions?: NetworkException[];
   /** An iOS .app or .xcarchive folder: Xcode signs it again on export, so its signing is not judged. */
   unexported?: true;
+  /** expo-updates (EAS Update): the channel this build gets over-the-air updates from. Absent when updates are off. */
+  updates?: { channel: string; file: string };
   bundle?: JsBundle;
   expoConfig?: { file: string; value: unknown };
   /** Archive entries ending in `.map`. */

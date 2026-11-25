@@ -34,6 +34,7 @@ const ANDROID_ATTR_NAMES: ReadonlyMap<number, string> = new Map([
   [0x01010003, 'name'],
   [0x0101000f, 'debuggable'],
   [0x01010027, 'scheme'],
+  [0x01010024, 'value'],
   [0x01010028, 'host'],
   [0x0101021b, 'versionCode'],
   [0x0101021c, 'versionName'],

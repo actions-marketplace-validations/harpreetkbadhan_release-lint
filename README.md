@@ -115,6 +115,7 @@ release-lint 0.2.4 · release-lint-demo.aab · Android · com.example.releaselin
 | `host/*` | warning (error in Expo config) | `localhost`, `10.0.2.2`, private network addresses, ngrok and other tunnels, `.local` / `.test` domains, and staging / dev hosts |
 | `debug/debuggable` | error | Android `android:debuggable`, or a development-signed iOS build (`get-task-allow`) |
 | `debug/dev-bundle` | error | A development JavaScript bundle (`__DEV__` is true) |
+| `updates/non-production-channel` | error | An Expo app built to get over-the-air updates (EAS Update) from a `preview`, `staging`, `development`, `beta`, … channel: tester updates would reach your users |
 | `debug/simulator-build` | error | An iOS Simulator build: the App Store only accepts device builds |
 | `debug/cleartext-traffic`, `debug/arbitrary-loads` | warning | Plain HTTP allowed everywhere (Android manifest or `<base-config>`) or App Transport Security turned off (iOS) |
 | `debug/cleartext-exception` | warning | Plain HTTP allowed for one host: an Android network security config `<domain-config>`, or iOS `NSExceptionDomains`. Names dev hosts such as `10.0.2.2` or staging |

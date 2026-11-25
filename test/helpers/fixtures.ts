@@ -237,6 +237,7 @@ export const ANDROID_ATTR_IDS: Record<string, number> = {
   versionName: 0x0101021c,
   usesCleartextTraffic: 0x010104ec,
   autoVerify: 0x010104ee,
+  value: 0x01010024,
 };
 
 const u16 = (n: number) => {

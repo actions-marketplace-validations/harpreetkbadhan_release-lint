@@ -65,6 +65,7 @@ async function readAndroid(zip: ZipArchive, file: string, layout: Layout): Promi
   const configName = `${layout.assets}app.config`;
   const expoConfig = await readOptional(zip, configName, problems, (buf) => readExpoConfig(configName, buf), MAX_CONFIG_BYTES);
   const networkExceptions = await readNetworkExceptions(zip, layout, problems);
+  const updates = application ? updatesChannel(application, layout.manifest) : undefined;
 
   return {
     platform: 'android',
@@ -78,6 +79,7 @@ async function readAndroid(zip: ZipArchive, file: string, layout: Layout): Promi
     },
     deepLinks: application ? intentFilterHosts(application, layout.manifest) : [],
     ...(networkExceptions.length > 0 ? { networkExceptions } : {}),
+    ...(updates ? { updates } : {}),
     ...(bundle ? { bundle } : {}),
     ...(expoConfig ? { expoConfig } : {}),
     sourceMaps: sourceMaps(zip),
@@ -94,6 +96,22 @@ function intentFilterHosts(application: XmlElement, file: string): DeepLink[] {
       .filter((host): host is string => Boolean(host))
       .map((host) => ({ host, kind, file }));
   });
+}
+
+const UPDATES_META = 'expo.modules.updates.';
+
+/** expo-updates keeps its config in <meta-data> (checked on a real SDK 58 prebuild); the request headers are JSON. */
+function updatesChannel(application: XmlElement, file: string): AppModel['updates'] {
+  const meta = new Map(application.children.filter((c) => c.name === 'meta-data').map((m) => [m.attributes['android:name'] ?? '', m.attributes['android:value'] ?? '']));
+  if (meta.get(`${UPDATES_META}ENABLED`) === 'false') return undefined;
+  let headers: unknown;
+  try {
+    headers = JSON.parse(meta.get(`${UPDATES_META}UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY`) ?? '');
+  } catch {
+    return undefined; // no headers, or not JSON: expo-updates cannot use them either
+  }
+  const channel = headers && typeof headers === 'object' ? (headers as Record<string, unknown>)['expo-channel-name'] : undefined;
+  return typeof channel === 'string' && channel ? { channel, file } : undefined;
 }
 
 /**

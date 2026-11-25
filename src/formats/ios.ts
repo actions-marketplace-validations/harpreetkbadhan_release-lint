@@ -34,6 +34,9 @@ export async function readIpa(zip: ZipArchive, file: string, { exported = true }
 
   const ats = info['NSAppTransportSecurity'];
   const arbitraryLoads = isPlistDict(ats) ? ats['NSAllowsArbitraryLoads'] : undefined;
+  const expoPlistName = `${appDir}Expo.plist`;
+  const expoPlist = await readOptional(zip, expoPlistName, problems, parsePlist, MAX_CONFIG_BYTES);
+  const updates = updatesChannel(expoPlist, expoPlistName);
   const getTaskAllow = exported ? entitlements?.['get-task-allow'] : undefined;
   const simulator = info['DTPlatformName'] === 'iphonesimulator';
   const networkExceptions = atsExceptions(ats, infoName);
@@ -51,12 +54,21 @@ export async function readIpa(zip: ZipArchive, file: string, { exported = true }
     },
     deepLinks: entitlements ? associatedDomains(entitlements, executable) : [],
     ...(networkExceptions.length > 0 ? { networkExceptions } : {}),
+    ...(updates ? { updates } : {}),
     ...(bundle ? { bundle } : {}),
     ...(expoConfig ? { expoConfig } : {}),
     sourceMaps: sourceMaps(zip),
     problems,
     ...(exported ? {} : { unexported: true as const }),
   };
+}
+
+/** expo-updates config, copied into the app as Expo.plist (a binary plist in a real build). */
+function updatesChannel(plist: PlistValue | undefined, file: string): AppModel['updates'] {
+  if (!isPlistDict(plist) || plist['EXUpdatesEnabled'] === false) return undefined;
+  const headers = plist['EXUpdatesRequestHeaders'];
+  const channel = isPlistDict(headers) ? headers['expo-channel-name'] : undefined;
+  return typeof channel === 'string' && channel ? { channel, file } : undefined;
 }
 
 const INSECURE_HTTP_KEYS = ['NSExceptionAllowsInsecureHTTPLoads', 'NSTemporaryExceptionAllowsInsecureHTTPLoads'];

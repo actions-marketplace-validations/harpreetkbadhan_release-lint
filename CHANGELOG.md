@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.2
+
+- New rule `updates/non-production-channel` (#5, suggested on Reddit): an Expo app built to get over-the-air updates
+  (EAS Update) from a tester channel (`preview`, `staging`, `development`, `beta`, …). Updates meant for testers would
+  reach your users, and fixes published to production never would. Read from the Android manifest
+  (`expo.modules.updates` meta-data) and the iOS `Expo.plist`; skipped when updates are turned off. Confirmed on a
+  real Expo SDK 58 release `.aab` built with Gradle, and a real `.ipa`'s `Expo.plist`.
+
 ## 0.3.1
 
 - **iOS without an `.ipa`.** release-lint now reads an Xcode `.app` or `.xcarchive` folder directly, so you can scan an

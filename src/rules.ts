@@ -11,7 +11,7 @@ interface Text {
 /** Runs every rule and returns the findings, errors first. */
 export function runRules(app: AppModel, options: RuleOptions): Finding[] {
   const texts = collectTexts(app);
-  const findings = [...secretRules(texts), ...hostRules(texts, options), ...deepLinkRules(app, options), ...networkRules(app, options), ...releaseRules(app)];
+  const findings = [...secretRules(texts), ...hostRules(texts, options), ...deepLinkRules(app, options), ...networkRules(app, options), ...updatesRules(app), ...releaseRules(app)];
   const rank = (s: Severity) => SEVERITIES.indexOf(s);
   return findings.map((f, i) => ({ f, i })).sort((a, b) => rank(b.f.severity) - rank(a.f.severity) || a.i - b.i).map(({ f }) => f);
 }
@@ -214,6 +214,25 @@ function networkRules(app: AppModel, { allowHosts }: RuleOptions): Finding[] {
     const message = issue ? `Plain HTTP is allowed for a development host. ${issue.message}` : 'Plain HTTP is allowed for this host';
     return [{ ruleId: 'debug/cleartext-exception', severity: 'warning', message, ...at, fix: CLEARTEXT_FIX[app.platform] }];
   });
+}
+
+// ---------------------------------------------------------------- over-the-air updates
+
+/** Channel names for testers: the environment words, plus the ones EAS projects use for test builds. */
+const TEST_CHANNEL_WORDS = new Set([...ENV_WORDS, 'preview', 'beta', 'internal']);
+
+function updatesRules({ updates }: AppModel): Finding[] {
+  if (!updates || !updates.channel.toLowerCase().split(/[^a-z0-9]+/).some((word) => TEST_CHANNEL_WORDS.has(word))) return [];
+  return [
+    {
+      ruleId: 'updates/non-production-channel',
+      severity: 'error',
+      message: `Store build gets over-the-air updates from the "${updates.channel}" channel: updates meant for testers reach your users, and production fixes never do`,
+      evidence: `expo-channel-name: ${updates.channel}`,
+      location: updates.file,
+      fix: 'Build the store version with your production EAS build profile (eas.json → build.production.channel), or set updates.requestHeaders["expo-channel-name"] for release builds. A build for testers only: --ignore updates/non-production-channel.',
+    },
+  ];
 }
 
 // ---------------------------------------------------------------- release settings
