@@ -1,15 +1,17 @@
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { main } from '../src/cli.js';
 import { aab, androidManifest, hbc, ipa, writeTemp } from './helpers/fixtures.js';
 
+const VERSION = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
 const STRIPE_LIVE = 'sk_' + 'live_' + '4eC39HqLyjWDarjtT1zdp7dc';
 const text = (value: string) => Buffer.from(value);
 const DOMAINS = 'com.apple.developer.associated-domains';
 
-async function run(argv: string[], { cwd, color = false }: { cwd?: string; color?: boolean } = {}) {
+async function run(argv: string[], { cwd, color = false, env = {} }: { cwd?: string; color?: boolean; env?: Record<string, string> } = {}) {
   const out: string[] = [];
   const err: string[] = [];
   const code = await main(argv, {
@@ -17,6 +19,7 @@ async function run(argv: string[], { cwd, color = false }: { cwd?: string; color
     stderr: { write: (s: string) => err.push(s) },
     cwd: cwd ?? (await mkdtemp(join(tmpdir(), 'release-lint-cwd-'))),
     color,
+    env,
   });
   return { code, stdout: out.join(''), stderr: err.join('') };
 }
@@ -35,7 +38,7 @@ describe('release-lint CLI', () => {
     const path = await writeTemp('clean.ipa', ipa({ bundle: hbc({ strings: ['https://api.example.com'], identifiers: ['x'] }) }));
     const { code, stdout } = await run([path]);
     expect(code).toBe(0);
-    expect(stdout).toContain('release-lint 0.1.0 · clean.ipa · iOS · com.example.demo 1.4.0 (42) · Hermes v98');
+    expect(stdout).toContain(`release-lint ${VERSION} · clean.ipa · iOS · com.example.demo 1.4.0 (42) · Hermes v98`);
     expect(stdout).toContain('No release problems found');
   });
 
@@ -125,8 +128,59 @@ describe('release-lint CLI', () => {
     expect(stdout).toContain('x\\u000a::error::forged.map');
   });
 
+  describe('in GitHub Actions', () => {
+    const actionsEnv = async () => {
+      const summary = join(await mkdtemp(join(tmpdir(), 'release-lint-gh-')), 'summary.md');
+      await writeFile(summary, '');
+      return { GITHUB_ACTIONS: 'true', GITHUB_STEP_SUMMARY: summary };
+    };
+
+    it('adds an annotation per finding and a findings table to the job summary', async () => {
+      const env = await actionsEnv();
+      const { code, stdout } = await run([await badIpa()], { env });
+      expect(code).toBe(1);
+      const annotations = stdout.split('\n').filter((line) => line.startsWith('::'));
+      expect(annotations).toHaveLength(3);
+      expect(annotations[0]).toMatch(/^::error title=release-lint%3A secret\/stripe-secret-key::Stripe live secret key: sk_live_••••p7dc/);
+      expect(annotations[2]).toMatch(/^::warning title=release-lint%3A host\/private-network::/);
+      expect(stdout).not.toContain(STRIPE_LIVE);
+
+      const summary = await readFile(env.GITHUB_STEP_SUMMARY, 'utf8');
+      expect(summary).toContain('## release-lint: demo.ipa');
+      expect(summary).toContain('**2 errors · 1 warning · 0 info**');
+      expect(summary).toContain('| 🔴 | `secret/stripe-secret-key` | Stripe live secret key: `sk_live_••••p7dc` |');
+      expect(summary).not.toContain(STRIPE_LIVE);
+    });
+
+    it('reports a clean app in the summary and adds no annotations', async () => {
+      const env = await actionsEnv();
+      const path = await writeTemp('clean.ipa', ipa({ bundle: hbc({ strings: ['https://api.example.com'], identifiers: ['x'] }) }));
+      const { stdout } = await run([path], { env });
+      expect(stdout).not.toMatch(/^::/m);
+      expect(await readFile(env.GITHUB_STEP_SUMMARY, 'utf8')).toContain('No release problems found');
+    });
+
+    it('keeps --json output clean', async () => {
+      const env = await actionsEnv();
+      const { stdout } = await run([await badIpa(), '--json'], { env });
+      expect(() => JSON.parse(stdout)).not.toThrow();
+      expect(await readFile(env.GITHUB_STEP_SUMMARY, 'utf8')).toBe('');
+    });
+
+    it('cannot be used to inject workflow commands', async () => {
+      const env = await actionsEnv();
+      const path = await writeTemp('demo.ipa', ipa({ extra: { 'Payload/Demo.app/x\n::add-mask::y|z`.map': text('{}') } }));
+      const { stdout } = await run([path], { env });
+      const commands = stdout.split('\n').filter((line) => line.startsWith('::'));
+      expect(commands).toHaveLength(1);
+      expect(commands[0]).toMatch(/^::warning /);
+      const summary = await readFile(env.GITHUB_STEP_SUMMARY, 'utf8');
+      expect(summary).toContain('x\\u000a::add-mask::y\\|z\'.map');
+    });
+  });
+
   it('prints help and version', async () => {
     expect(await run(['--help'])).toMatchObject({ code: 0, stdout: expect.stringContaining('Usage: release-lint <app.ipa|app.aab>') });
-    expect(await run(['--version'])).toMatchObject({ code: 0, stdout: '0.1.0\n' });
+    expect(await run(['--version'])).toMatchObject({ code: 0, stdout: `${VERSION}\n` });
   });
 });

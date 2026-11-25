@@ -47,6 +47,40 @@ export function formatText(app: AppModel, findings: Finding[], { color, version 
   return `${header}\n\n${body.join('\n\n')}\n\n ${summary}\n`;
 }
 
+const GITHUB_LEVELS: Record<Severity, string> = { error: 'error', warning: 'warning', info: 'notice' };
+const SUMMARY_ICONS: Record<Severity, string> = { error: '🔴', warning: '🟡', info: '🔵' };
+
+/** GitHub workflow-command encoding. With clean() first, app text can never start a new `::command::` line. */
+const commandData = (text: string) => clean(text).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+const commandProperty = (text: string) => commandData(text).replace(/:/g, '%3A').replace(/,/g, '%2C');
+
+/** One `::error` / `::warning` / `::notice` line per finding, shown on the GitHub Actions run page. */
+export function formatAnnotations(findings: Finding[]): string {
+  return findings
+    .map((f) => {
+      const title = commandProperty(`release-lint: ${f.ruleId}`);
+      return `::${GITHUB_LEVELS[f.severity]} title=${title}::${commandData(`${f.message}: ${f.evidence} (${f.location}). Fix: ${f.fix}`)}\n`;
+    })
+    .join('');
+}
+
+/** A table cell: escaped like the text report, plus `|` (ends a cell) and backticks (end a code span). */
+const cell = (text: string) => clean(text).replace(/\|/g, '\\|').replace(/`/g, "'");
+
+/** Markdown for the GitHub Actions job summary ($GITHUB_STEP_SUMMARY). */
+export function formatSummary(app: AppModel, findings: Finding[], version: string): string {
+  const platform = app.platform === 'ios' ? 'iOS' : 'Android';
+  const head = `## release-lint: ${cell(app.file)}\n\n${platform} · \`${cell(app.appId)}\` ${cell(app.version)} (${cell(app.build)}) · ${engine(app)} · release-lint ${version}\n\n`;
+  if (findings.length === 0) {
+    return `${head}✅ No release problems found.\n\n`;
+  }
+  const rows = findings.map(
+    (f) => `| ${SUMMARY_ICONS[f.severity]} | \`${cell(f.ruleId)}\` | ${cell(f.message)}: \`${cell(f.evidence)}\` | \`${cell(f.location)}\` | ${cell(f.fix)} |`,
+  );
+  const summary = `${plural(count(findings, 'error'), 'error')} · ${plural(count(findings, 'warning'), 'warning')} · ${count(findings, 'info')} info`;
+  return `${head}**${summary}**\n\n|   | Rule | Found | Where | Fix |\n|:-:|---|---|---|---|\n${rows.join('\n')}\n\n`;
+}
+
 /** The machine report for CI and agents. Evidence is masked exactly as in the text report. */
 export function formatJson(app: AppModel, findings: Finding[], version: string): string {
   const { bundle } = app;

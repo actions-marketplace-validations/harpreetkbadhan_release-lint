@@ -8,7 +8,7 @@ process.stdout.on('error', (error: NodeJS.ErrnoException) => {
   if (error.code !== 'EPIPE') throw error;
 });
 
-main(process.argv.slice(2), { stdout: process.stdout, stderr: process.stderr, cwd: process.cwd(), color }).then(
+main(process.argv.slice(2), { stdout: process.stdout, stderr: process.stderr, cwd: process.cwd(), color, env: process.env }).then(
   (code) => {
     process.exitCode = code;
   },

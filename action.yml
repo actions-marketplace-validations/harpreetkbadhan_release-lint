@@ -1,0 +1,39 @@
+name: release-lint
+description: Lint a built iOS or Android app (.ipa, .aab) for release mistakes before it ships
+author: Harpreet Kumar
+branding:
+  icon: shield
+  color: red
+
+inputs:
+  file:
+    description: Path to the built .ipa or .aab
+    required: true
+  fail-on:
+    description: Fail the step when a finding is at least this severe (error, warning, info, none)
+    required: false
+    default: error
+  config:
+    description: Path to a release-lint.config.json (default ./release-lint.config.json if it exists)
+    required: false
+    default: ''
+  version:
+    description: Version of the app-release-lint npm package to run
+    required: false
+    default: '0'
+
+runs:
+  using: composite
+  steps:
+    - name: Run release-lint
+      shell: bash
+      # Inputs go through env vars, never into the script text, so a path cannot inject shell code.
+      env:
+        RELEASE_LINT_FILE: ${{ inputs.file }}
+        RELEASE_LINT_FAIL_ON: ${{ inputs.fail-on }}
+        RELEASE_LINT_CONFIG: ${{ inputs.config }}
+        RELEASE_LINT_VERSION: ${{ inputs.version }}
+      run: |
+        args=("$RELEASE_LINT_FILE" --fail-on "$RELEASE_LINT_FAIL_ON")
+        if [ -n "$RELEASE_LINT_CONFIG" ]; then args+=(--config "$RELEASE_LINT_CONFIG"); fi
+        npx --yes "app-release-lint@$RELEASE_LINT_VERSION" "${args[@]}"

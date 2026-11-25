@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { appendFile, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { readApp } from './formats/app.js';
-import { formatJson, formatText } from './report.js';
+import { formatAnnotations, formatJson, formatSummary, formatText } from './report.js';
 import { runRules } from './rules.js';
 import { ReleaseLintError, SEVERITIES, type AppModel, type Finding, type Severity } from './types.js';
 
@@ -50,6 +50,8 @@ export interface Io {
   cwd: string;
   /** Whether the terminal wants color; `--no-color` still turns it off. */
   color: boolean;
+  /** Environment; `GITHUB_ACTIONS` / `GITHUB_STEP_SUMMARY` turn on annotations and the job summary. */
+  env?: Record<string, string | undefined>;
 }
 
 /** Runs the CLI and returns the exit code: 0 clean, 1 findings at or above --fail-on, 2 unusable input. */
@@ -117,7 +119,22 @@ async function run(argv: string[], io: Io): Promise<number> {
   const findings = runRules(app, { allowHosts: config.allowHosts }).filter((f) => !isIgnored(f, ignore));
 
   io.stdout.write(values.json ? formatJson(app, findings, VERSION) : formatText(app, findings, { color: io.color && !values['no-color'], version: VERSION }));
+  if (!values.json && io.env?.['GITHUB_ACTIONS'] === 'true') {
+    await reportToGitHub(app, findings, io);
+  }
   return fails(findings, failOn) ? EXIT_FINDINGS : EXIT_OK;
+}
+
+/** Annotations on the run page and a table in the job summary. A summary write error never hides the result. */
+async function reportToGitHub(app: AppModel, findings: Finding[], io: Io): Promise<void> {
+  io.stdout.write(formatAnnotations(findings));
+  const summaryPath = io.env?.['GITHUB_STEP_SUMMARY'];
+  if (!summaryPath) return;
+  try {
+    await appendFile(summaryPath, formatSummary(app, findings, VERSION));
+  } catch (error) {
+    io.stderr.write(`release-lint: could not write the job summary (${(error as Error).message})\n`);
+  }
 }
 
 /** Turns the usual file-system errors into a clean exit-2 message instead of an "unexpected error" stack trace. */
