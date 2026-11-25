@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: If you use release-lint in your work, please cite it as below.
+title: "release-lint: lint built iOS and Android apps for release mistakes"
+type: software
+authors:
+  - given-names: Harpreet
+    family-names: Kumar
+version: 0.1.1
+date-released: 2026-11-25
+license: MIT
+repository-code: https://github.com/harpreetkbadhan/release-lint
+url: https://www.npmjs.com/package/app-release-lint
+keywords:
+  - react-native
+  - expo
+  - ios
+  - android
+  - release
+  - security

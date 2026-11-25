@@ -1,0 +1,32 @@
+name: GitHub Packages
+
+# Publishes a copy of each release to GitHub Packages (shown in the repo sidebar).
+# npm (app-release-lint) stays the main install path.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+          scope: '@harpreetkbadhan'
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Publish @harpreetkbadhan/app-release-lint
+        run: |
+          npm pkg set name=@harpreetkbadhan/app-release-lint
+          npm publish --ignore-scripts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

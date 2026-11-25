@@ -1,13 +1,42 @@
-# release-lint
+<p align="center">
+  <img src="docs/logo.png" width="112" height="112" alt="release-lint logo: a phone with a shield and a check mark">
+</p>
 
-[![npm](https://img.shields.io/npm/v/app-release-lint)](https://www.npmjs.com/package/app-release-lint)
-[![CI](https://github.com/harpreetkbadhan/release-lint/actions/workflows/ci.yml/badge.svg)](https://github.com/harpreetkbadhan/release-lint/actions/workflows/ci.yml)
+<h1 align="center">release-lint</h1>
 
-Lint a **built** iOS or Android app for release mistakes, right before you ship it.
+<p align="center">
+  <b>Catch release mistakes in your built <code>.ipa</code> / <code>.aab</code> before you ship.</b><br>
+  Leaked keys, staging and localhost URLs, staging deep links, debug builds and source maps.
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/app-release-lint"><img src="https://img.shields.io/npm/v/app-release-lint?color=f38ba8" alt="npm version"></a>
+  <a href="https://github.com/harpreetkbadhan/release-lint/actions/workflows/ci.yml"><img src="https://github.com/harpreetkbadhan/release-lint/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/marketplace/actions/release-lint"><img src="https://img.shields.io/badge/Marketplace-release--lint-2088FF?logo=githubactions&logoColor=white" alt="GitHub Marketplace"></a>
+  <img src="https://img.shields.io/badge/dependencies-0-brightgreen" alt="zero dependencies">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/harpreetkbadhan/release-lint" alt="MIT license"></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/React_Native-20232A?logo=react&logoColor=61DAFB" alt="React Native">
+  <img src="https://img.shields.io/badge/Expo-000020?logo=expo&logoColor=white" alt="Expo">
+  <img src="https://img.shields.io/badge/iOS-000000?logo=apple&logoColor=white" alt="iOS">
+  <img src="https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=white" alt="Android">
+  <img src="https://img.shields.io/badge/Hermes-bytecode-6e40c9" alt="Hermes bytecode">
+</p>
+
+<p align="center">
+  <a href="#try-it-in-30-seconds">Try it in 30 seconds</a> ·
+  <a href="#in-ci">GitHub Action</a> ·
+  <a href="#what-it-checks">Rules</a> ·
+  <a href="https://github.com/harpreetkbadhan/release-lint-demo">Demo app</a>
+</p>
 
 ```sh
 npx app-release-lint app-release.ipa     # or app-release.aab
 ```
+
+🔑 secret keys · 🌐 staging / localhost / LAN URLs · 🔗 staging deep links · 🐞 debug builds · 🗺️ source maps
 
 Or install it (`npm i -D app-release-lint`) and run `release-lint`. Node 20.19 or newer.
 
@@ -30,10 +59,10 @@ or `.aab` and checks what is really inside.
 
 > **Only scan apps you own or have permission to audit.**
 
-Real output for a blank `create-expo-app` (Expo SDK 58, React Native 0.88) release build with five planted mistakes:
+Real output for the release build of [release-lint-demo](https://github.com/harpreetkbadhan/release-lint-demo), a blank `create-expo-app` (Expo SDK 58, React Native 0.88) with planted mistakes:
 
 ```
-release-lint 0.1.0 · app-release.aab · Android · com.example.calibration 1.0.0 (1) · Hermes v99
+release-lint 0.1.1 · app-release.aab · Android · com.example.releaselintdemo 1.0.0 (1) · Hermes v99
 
  ERROR  secret/stripe-secret-key  Stripe live secret key
         sk_live_••••p7dc  (base/assets/index.android.bundle)
