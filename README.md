@@ -13,7 +13,15 @@ Or install it (`npm i -D app-release-lint`) and run `release-lint`. Node 20.19 o
 
 ![release-lint finding a leaked Stripe key, a staging App Link and localhost URLs in a release build of an Expo app](docs/demo.gif)
 
-Try it on [release-lint-demo](https://github.com/harpreetkbadhan/release-lint-demo), a blank Expo app with six planted mistakes.
+### Try it in 30 seconds
+
+No app at hand? Scan the release build of [release-lint-demo](https://github.com/harpreetkbadhan/release-lint-demo), a
+blank Expo app with six planted mistakes:
+
+```sh
+curl -LO https://github.com/harpreetkbadhan/release-lint-demo/releases/download/v1.0.0/release-lint-demo.aab
+npx app-release-lint release-lint-demo.aab
+```
 
 Code review and source scanners look at your repository. But what ships is the file your build produced, and that file
 often differs from what the repository suggests: `app.config.ts` switches on `APP_VARIANT` or env vars, Expo generates the
@@ -86,13 +94,33 @@ Exit codes: `0` nothing at or above `--fail-on`, `1` findings at or above `--fai
 
 ### In CI
 
+**GitHub Actions**, after the step that builds the release file:
+
 ```yaml
-# GitHub Actions, after the step that builds the release file
-- name: Lint the release build
-  run: npx app-release-lint@0 build/app-release.aab
+- uses: harpreetkbadhan/release-lint@v0
+  with:
+    file: android/app/build/outputs/bundle/release/app-release.aab
+    # fail-on: warning               # error (default), warning, info, none
+    # config: release-lint.config.json
 ```
 
-With EAS: `eas build --local --platform ios --profile production --output app.ipa && npx app-release-lint app.ipa`.
+Findings appear as annotations on the run page and as a table in the job summary. The action uses the runner's Node
+(20.19 or newer; add `actions/setup-node` first if yours is older).
+
+**Any other CI:** `npx app-release-lint@0 path/to/app.aab`. Exit code 1 fails the step.
+
+**EAS Build:** a build hook in `package.json` runs it on the build worker after every successful Android build (the path
+assumes the default `bundleRelease` Gradle command):
+
+```json
+{
+  "scripts": {
+    "eas-build-on-success": "[ \"$EAS_BUILD_PLATFORM\" != android ] || npx app-release-lint@0 android/app/build/outputs/bundle/release/app-release.aab"
+  }
+}
+```
+
+For a local build: `eas build --local --platform ios --profile production --output app.ipa && npx app-release-lint app.ipa`.
 
 ### Config file
 
@@ -135,7 +163,7 @@ no runtime dependencies. It parses:
 a large pentest report. gitleaks and trufflehog scan source and git history, not built apps. release-lint does one
 narrower job: a few seconds, no setup, in any CI step, and a short list of release mistakes with a fix for each.
 
-## Limits (0.1)
+## Limits (0.1.x)
 
 - `.apk` files are not supported yet; scan the `.aab` you upload to Google Play.
 - Android hosts written as resource references (`@string/…`) are reported but not resolved yet.

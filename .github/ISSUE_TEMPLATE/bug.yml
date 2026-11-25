@@ -1,0 +1,19 @@
+name: Bug
+description: release-lint crashed, could not read your file, or behaved unexpectedly
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Include the command and the output (secrets are masked). Never attach the app file.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versions
+      placeholder: release-lint 0.1.1, Node 22, Expo SDK 58 / React Native 0.88
+    validations:
+      required: true
