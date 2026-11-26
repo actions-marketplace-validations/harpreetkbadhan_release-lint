@@ -9,7 +9,7 @@ const STRIPE_PUBLISHABLE = 'pk_' + 'live_' + '4eC39HqLyjWDarjtT1zdp7dc';
 const GOOGLE_KEY = 'AI' + 'za' + 'SyD-0123456789abcdefghijklmnopqrstu';
 const AWS_KEY = 'AK' + 'IA' + 'IOSFODNN7EXAMPLE';
 const OPENAI_KEY = 'sk-' + 'proj-' + 'abcdefghijklmnopqrstuvwxyz0123456789';
-const PEM = '-----BEGIN ' + 'RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA\n-----END RSA PRIVATE KEY-----';
+const PEM = '-----BEGIN ' + 'RSA PRIVATE KEY-----\n' + 'MIIEowIBAAKCAQEA'.repeat(4) + '\n' + 'w'.repeat(64) + '\n-----END RSA PRIVATE KEY-----';
 const jwt = (payload: object) =>
   ['{"alg":"HS256","typ":"JWT"}', JSON.stringify(payload)].map((part) => Buffer.from(part).toString('base64url')).join('.') + '.' + 'x'.repeat(43);
 
@@ -102,6 +102,20 @@ describe('host rules', () => {
   it("ignores the Sentry SDK's built-in Spotlight URL and Sentry's own domains", () => {
     expect(run(withBundle('http://localhost:8969/stream', 'https://develop.sentry.dev/sdk/expected-features/#feature-flags', 'https://o1.ingest.sentry.io/api/1/'))).toEqual([]);
     expect(ids(run(withBundle('http://localhost:8969/api')))).toEqual(['host/localhost']);
+  });
+
+  it("ignores axios's URL-parsing base, found in every bundle that uses axios, but not longer localhost URLs", () => {
+    expect(run(withBundle('http://localhost', 'localhost'))).toEqual([]);
+    const js = "var origin=n&&window.location.href||'http://localhost';";
+    expect(run(app({ bundle: { file: BUNDLE, kind: 'javascript', approximate: false, strings: [js] } }))).toEqual([]);
+    for (const url of ['http://localhost/', 'http://localhost/api', 'http://localhost:3000', 'https://localhost']) {
+      expect(ids(run(withBundle(url)))).toEqual(['host/localhost']);
+    }
+  });
+
+  it('still reports a bare http://localhost set in the app config', () => {
+    const model = app({ expoConfig: { file: 'app.config', value: { extra: { apiUrl: 'http://localhost' } } } });
+    expect(run(model)).toMatchObject([{ ruleId: 'host/localhost', severity: 'error', evidence: 'http://localhost' }]);
   });
 
   it('ignores framework URLs inside a plain JavaScript bundle too, but not the app’s own URLs next to them', () => {
