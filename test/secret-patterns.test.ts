@@ -44,6 +44,7 @@ const CASES: Case[] = [
   { rule: 'secret/supabase-secret-key', finds: 'sb_' + 'secret_' + 'a'.repeat(32), ignores: 'sb_' + 'publishable_' + 'a'.repeat(32) },
   { rule: 'secret/groq-api-key', finds: 'gsk' + '_' + 'a'.repeat(52), ignores: 'gsk' + '_' + 'a'.repeat(20) },
   { rule: 'secret/perplexity-api-key', finds: 'pplx' + '-' + 'a'.repeat(48), ignores: 'pplx' + '-' + 'a'.repeat(20) },
+  { rule: 'secret/posthog-api-key', finds: 'ph' + 'x_' + 'a'.repeat(43), ignores: 'ph' + 'c_' + 'a'.repeat(43) },
 ];
 
 const app = (strings: string[]): AppModel => ({
