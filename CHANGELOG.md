@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.6
+
+- New rule `secret/shopify-token`: Shopify Admin API access tokens and app secrets (`shpat_`, `shpca_`, `shppa_`,
+  `shpss_`) in the bundle or Expo config. Thanks [@shiwng](https://github.com/shiwng) (#12), closing good first issue #4.
+
 ## 0.3.5
 
 - **No more `host/localhost` for axios's built-in `http://localhost`.** axios uses it as the base for parsing
