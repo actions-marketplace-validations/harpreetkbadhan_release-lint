@@ -49,6 +49,8 @@ a staging URL slips into the build easily, and the built file is where you can s
 
 ![npx app-release-lint, run with no file in an Expo project, finds the release build and reports a leaked Stripe key, a staging App Link and localhost URLs](docs/demo.gif)
 
+![Code review reads the repo, but users get the build: the build step adds env vars, app.config.ts values, prebuild output and config plugins. release-lint reads the built .aab and reports a Stripe secret key, a preview update channel, a staging App Link and a staging API host, ending with: Do not upload this build.](docs/how-it-works.gif)
+
 ## Start here
 
 | You have | Do this | Time |
@@ -161,6 +163,8 @@ and exits `2`.
     # fail-on: warning               # error (default), warning, info, none
     # config: release-lint.config.json
 ```
+
+![GitHub Actions run: release-lint fails the release build with exit code 1 and lists a leaked Stripe key, a preview update channel, a staging App Link and a staging API host; after the fix the run passes with "No release problems found." and exit code 0.](docs/ci-one-line.gif)
 
 Findings appear as annotations on the run page and as a table in the job summary. The action uses the runner's Node
 (20.19 or newer; add `actions/setup-node` first if yours is older).
