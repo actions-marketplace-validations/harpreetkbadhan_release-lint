@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.7
+
+- New rule `secret/huggingface-token`: Hugging Face access and organization tokens (`hf_`, `api_org_`). Thanks
+  [@ChaseZhang-ai](https://github.com/ChaseZhang-ai) (#15).
+- New rule `secret/square-access-token`: Square access tokens (`sq0atp-`, `EAAA`). Square application IDs (`sq0idp-`)
+  are public by design and never reported. Thanks [@ChaseZhang-ai](https://github.com/ChaseZhang-ai) (#16).
+
 ## 0.3.6
 
 - New rule `secret/shopify-token`: Shopify Admin API access tokens and app secrets (`shpat_`, `shpca_`, `shppa_`,
