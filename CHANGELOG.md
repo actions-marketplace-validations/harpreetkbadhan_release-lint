@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- New rule `secret/sentry-auth-token`: Sentry user tokens (`sntryu_`) and organization tokens (`sntrys_`), which
+  upload source maps at build time. Sentry DSNs are public by design and never reported. Thanks
+  [@ChaseZhang-ai](https://github.com/ChaseZhang-ai) (#19).
+
 ## 0.3.7
 
 - New rule `secret/huggingface-token`: Hugging Face access and organization tokens (`hf_`, `api_org_`). Thanks
