@@ -1,10 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.3.8
 
 - New rule `secret/sentry-auth-token`: Sentry user tokens (`sntryu_`) and organization tokens (`sntrys_`), which
   upload source maps at build time. Sentry DSNs are public by design and never reported. Thanks
   [@ChaseZhang-ai](https://github.com/ChaseZhang-ai) (#19).
+- New rule `secret/supabase-secret-key`: Supabase secret keys (`sb_secret_`), which bypass every Row Level Security
+  policy. Supabase publishable keys (`sb_publishable_`) are public by design and never reported. Thanks
+  [@ChaseZhang-ai](https://github.com/ChaseZhang-ai) (#20), closing good first issue #18.
 
 ## 0.3.7
 
