@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.7
 
 - New rule `secret/huggingface-token`: Hugging Face access and organization tokens (`hf_`, `api_org_`). Thanks
   [@ChaseZhang-ai](https://github.com/ChaseZhang-ai) (#15).
